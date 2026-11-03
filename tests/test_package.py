@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.2.0')
+        self.assertEqual(self.manifest['version'],'0.2.3')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -56,7 +56,7 @@ class PackageTest(unittest.TestCase):
             self.assertIn(key,de['screen'])
 
     def test_local_logic_and_wizard(self):
-        for needle in ('enum Screen { LIST, TYPE, TIME, DATE, DAYS, SOUND, OPTIONS, REVIEW, CONFIRM_DELETE }',
+        for needle in ('enum Screen { LIST, EDIT, TYPE, TIME, DATE, DAYS, SOUND, OPTIONS, REVIEW, CONFIRM_DELETE }',
                        'void begin_new_()', 'void begin_edit_', 'void next_step_()',
                        'void save_()', 'void AlarmClock::set_occupied',
                        'void AlarmClock::publish_occupied_', 'occupied_preference_.save',
@@ -71,6 +71,35 @@ class PackageTest(unittest.TestCase):
     def test_frontend_runtime(self):
         result=subprocess.run(['node',str(ROOT/'tests/test_frontend.js')],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         self.assertIn('smoke test OK', result.stdout)
+
+    def test_home_assistant_time_date_service_contract(self):
+        js=(ROOT/'ha_card/tessera-alarmclock-card.js').read_text()
+        self.assertIn("_service('time','set_value'",js)
+        self.assertIn("_service('date','set_value'",js)
+        self.assertNotIn("_service('datetime','set_value'",js)
+
+    def test_graphic_edit_and_modal_alarm(self):
+        c=self.cpp
+        for fragment in (
+            'screen_=EDIT;', 'if (screen_==EDIT)', 'screen_=TIME; init_time_wheels_();',
+            'screen_=CONFIRM_DELETE;', 'footer_((screen_==REVIEW || screen_==EDIT)',
+            'lv_obj_create(lv_layer_sys())', 'LV_OBJ_FLAG_CLICKABLE',
+            'lv_obj_add_event_cb(btn,cb,LV_EVENT_CLICKED,this)',
+            'void AlarmClock::on_overlay_stop_', 'void AlarmClock::on_overlay_snooze_',
+            'lv_obj_delete(alarm_overlay_)', 's.audio_expired=true;',
+            'if (any_ringing() && (alarm_overlay_==nullptr',
+        ):
+            self.assertIn(fragment,c)
+        # No default-Tessera popup that closes upon background tap.
+        self.assertNotIn('tessera::show_popup(',c)
+        self.assertNotIn('tessera::popup_shown(',c)
+        self.assertNotIn('tessera::close_popup(',c)
+        # A timeout must silence audio without auto-acknowledging the alarm.
+        self.assertNotRegex(c,r'\(s\.test\?15000u:300000u\)\)\s*stop_alarm')
+        js=(ROOT/'ha_card/tessera-alarmclock-card.js').read_text()
+        for fragment in ('_editor(){', 'class="edit-hero"', 'class="edit-grid"',
+                         'data-action="save-edit"', "this._mode='edit'", "action==='save-edit'"):
+            self.assertIn(fragment,js)
 
     def test_cpp_mock_compilation(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')

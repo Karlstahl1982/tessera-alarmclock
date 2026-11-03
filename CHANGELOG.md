@@ -1,16 +1,21 @@
-# Changelog
+# Änderungsprotokoll
 
-## 0.2.0 – 2026-11-03
+## 0.2.3 – UI/Alarm-Bedienung
 
-- Hauptkachel bis 2×3, mit großem nächsten Weckzeitpunkt und Bedienhinweis.
-- Neue reduzierte Touch-Übersicht (nur angelegte Wecker) mit Ein/Aus und „Neuer Wecker“.
-- Sequentieller Touch-Assistent mit iOS-artigen Stunden-/Minuten-Rollern, Wiederholung, Datum/Wochentagen, Melodie, Lautstärke, Schlummern und Abschlusskontrolle.
-- Belegte Plätze lokal im Flash vermerkt; Migration konfigurierter Plätze aus 0.1.0 nach Möglichkeit.
-- Namen je Wecker; Touch-Vorlagen und freie Eingabe über Home Assistant.
-- Native ESPHome-Entitäten als `config` kategorisiert.
-- Neue optionale Home-Assistant-Dashboard-Karte mit kompakter Liste und vierstufigem Einrichtungsassistenten.
-- Bestehende lokale Audio-/Alarmsteuerung unverändert weitergenutzt.
+- Bestehende Wecker erhalten eine kompakte, grafische Bearbeitungsübersicht am Display; der Wizard bleibt für die Erstanlage.
+- Home Assistant: grafische Bearbeitungsansicht statt vierstufigem Wizard für vorhandene Wecker.
+- Dismissible Tessera-Popup durch blockierendes LVGL-System-Overlay ersetzt; Touches außerhalb der Aktionen werden abgefangen.
+- Ton verstummt nach der eingestellten Höchstdauer, die Quittierungsansicht bleibt bis Stoppen/Schlummern bestehen.
+- Native ESPHome-Entitäten und gespeicherte Weckerdaten bleiben kompatibel.
 
-## 0.1.0 – 2026-11-03
+## 0.2.2 – Lautstärkeregler
 
-- Fünf Wecker, Alarmton, Wiederholung und native Home-Assistant-Entitäten.
+- Live-Anzeige des Prozentwertes.
+
+## 0.2.1 – Home-Assistant-Zeit-/Datumsdienste
+
+- `time.set_value` und `date.set_value` statt unpassendem `datetime.set_value`.
+
+## 0.2.0 – Neugestaltung
+
+- Große Dashboard-Kachel, fünf Wecker, Touch-Wizard, eigene HA-Karte.

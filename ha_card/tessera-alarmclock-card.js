@@ -1,4 +1,4 @@
-/* Tessera AlarmClock v0.2.0 — dependency-free Home Assistant Lovelace card.
+/* Tessera AlarmClock v0.2.3 — dependency-free Home Assistant Lovelace card.
  * The ESP32 remains the source of truth. Only native ESPHome entities are used.
  */
 class TesseraAlarmClockCard extends HTMLElement {
@@ -101,6 +101,19 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
 .step{font-size:12px;color:var(--secondary-text-color);margin-bottom:13px}.summary{display:grid;gap:9px;padding:14px;border-radius:14px;background:var(--secondary-background-color)}
 .message{border-radius:12px;padding:11px;margin-top:12px;background:var(--error-color,#cc3333);color:white;font-size:13px}
 .empty{padding:20px;text-align:center;color:var(--secondary-text-color)}
+/* Graphic edit surface: readable on a narrow tablet and a wide HA dashboard. */
+.edit-hero{display:grid;grid-template-columns: minmax(140px,1fr) 1fr;align-items:center;gap:16px;margin-bottom:16px;padding:20px;border-radius:22px;background:var(--secondary-background-color)}
+.edit-hero .big-time{font-size:clamp(36px,7vw,64px);font-weight:330;line-height:1;letter-spacing:-2px;min-width:0}
+.edit-hero input[type=time]{font-size:clamp(26px,5vw,42px);border:0;background:transparent;padding:6px 0}
+.edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.edit-panel{border:1px solid var(--divider-color);border-radius:17px;padding:17px;min-width:0}
+.edit-panel-title{font-size:15px;font-weight:650;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.edit-panel-title .symbol{display:inline-flex;align-items:center;justify-content:center;width:31px;height:31px;border-radius:10px;background:var(--secondary-background-color)}
+.edit-panel.wide{grid-column:1/-1}.edit-choices{display:flex;flex-wrap:wrap;gap:8px}
+.edit-choices .choice{flex:1 1 auto;text-align:center;padding:11px 13px}
+.edit-tools{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:19px}
+.btn.danger{color:var(--error-color,#c73442);background:transparent}
+@media(max-width:640px){.edit-grid{grid-template-columns:1fr}.edit-hero{grid-template-columns:1fr}.edit-hero input[type=time]{font-size:35px}}
 @media(max-width:430px){ha-card{padding:14px}.alarm{gap:8px;padding:10px}.alarm .clock{font-size:21px;min-width:69px}.alarms{gap:6px}}
 </style>`;}
   _render() {
@@ -117,12 +130,50 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
         ${slots.some(x=>!x)?'<button class="btn primary full" data-action="add">+ Neuen Wecker hinzufügen</button>':''}
         <div class="actions"><button class="btn subtle" data-action="test">Testton</button><button class="btn subtle" data-action="stop">Alarm stoppen</button></div>`;
     } else {
-      content=this._wizard();
+      content=this._mode==='edit'?this._editor():this._wizard();
     }
     this.shadowRoot.innerHTML=this._style()+`<ha-card>${content}${this._error?`<div class="message">${this._esc(this._error)}</div>`:''}</ha-card>`;
     this.shadowRoot.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',e=>this._action(e.currentTarget)));
+    // Keep the visible percentage in sync while dragging; re-rendering here
+    // would replace the focused input and interrupt the drag gesture.
+    const volume=this.shadowRoot.querySelector('[data-field="volume"]');
+    if(volume) volume.addEventListener('input',()=>{
+      if(!this._draft) return;
+      this._draft.volume=Number(volume.value);
+      const label=this.shadowRoot.querySelector('[data-volume-label]');
+      if(label) label.textContent=`${Math.round(this._draft.volume)} %`;
+    });
   }
   _alarmRow(a){return `<div class="alarm"><div class="clock">${this._esc(a.time)}</div><div class="detail"><div class="title">${this._esc(a.name)}</div><div class="meta">${this._esc(this._modeLabel(a))}</div></div><button class="btn subtle" data-action="edit" data-index="${a.index}" aria-label="Wecker bearbeiten">Bearbeiten</button><button class="switch ${a.enabled?'on':''}" data-action="toggle" data-index="${a.index}" aria-label="Wecker ${a.enabled?'deaktivieren':'aktivieren'}"></button></div>`;}
+  _editor(){
+    const d=this._draft; if(!d) return '';
+    const weekdays=['Mo','Di','Mi','Do','Fr','Sa','So'];
+    return `<div class="head"><h2>Wecker bearbeiten</h2><button class="btn subtle" data-action="cancel">Schließen</button></div>
+      <div class="edit-hero">
+        <div><div class="muted">Weckzeit</div><label class="field"><input aria-label="Weckzeit" data-field="time" type="time" step="60" value="${this._esc(d.time)}"/></label></div>
+        <label class="field">Name<input data-field="name" type="text" maxlength="24" value="${this._esc(d.name)}" placeholder="z. B. Schule"/></label>
+      </div>
+      <div class="edit-grid">
+        <section class="edit-panel wide"><div class="edit-panel-title"><span class="symbol">↻</span>Wiederholung</div>
+          <div class="edit-choices">${[['Next','Nächste Uhrzeit'],['Date','Bestimmtes Datum'],['Weekly','Wöchentlich']].map(([v,t])=>`<button class="choice ${d.mode===v?'selected':''}" data-action="set-mode" data-value="${v}">${t}</button>`).join('')}</div>
+          ${d.mode==='Date'?`<label class="field" style="margin-top:12px">Datum<input data-field="date" type="date" value="${this._esc(d.date)}"/></label>`:''}
+          ${d.mode==='Weekly'?`<div class="days" style="margin-top:12px">${weekdays.map(day=>`<button class="day ${d.days.includes(day)?'selected':''}" data-action="day" data-value="${day}">${day}</button>`).join('')}</div>`:''}
+        </section>
+        <section class="edit-panel"><div class="edit-panel-title"><span class="symbol">♫</span>Alarmton</div>
+          <label class="field">Melodie<select data-field="tone">${['Classic','Gentle','Digital','Sunrise','Urgent'].map(t=>`<option ${d.tone===t?'selected':''}>${t}</option>`).join('')}</select></label>
+        </section>
+        <section class="edit-panel"><div class="edit-panel-title"><span class="symbol">◖</span>Lautstärke</div>
+          <label class="field">Maximal: <output data-volume-label>${Math.round(d.volume)} %</output><input data-field="volume" type="range" min="10" max="100" step="10" value="${d.volume}"/></label>
+        </section>
+        <section class="edit-panel"><div class="edit-panel-title"><span class="symbol">◷</span>Schlummern</div>
+          <div class="edit-choices">${['5','10'].map(v=>`<button class="choice ${d.snooze===v?'selected':''}" data-action="snooze-choice" data-value="${v}">${v} Minuten</button>`).join('')}</div>
+        </section>
+        <section class="edit-panel"><div class="edit-panel-title"><span class="symbol">✓</span>Status</div>
+          <div class="edit-choices">${[['on','Aktiv'],['off','Aus']].map(([v,t])=>`<button class="choice ${d.enabled===(v==='on')?'selected':''}" data-action="enabled-choice" data-value="${v}">${t}</button>`).join('')}</div>
+        </section>
+      </div>
+      <div class="edit-tools"><button class="btn danger" data-action="delete">Löschen</button><button class="btn" data-action="cancel">Abbrechen</button><button class="btn primary" data-action="save-edit" ${this._busy?'disabled':''}>${this._busy?'Speichere …':'Änderungen speichern'}</button></div>`;
+  }
   _wizard(){
     const d=this._draft; if(!d) return '';
     const labels=['Uhrzeit & Name','Wiederholung','Ton & Einstellungen','Überprüfen'];
@@ -134,7 +185,7 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
       ${d.mode==='Date'?`<label class="field">Datum<input data-field="date" type="date" value="${this._esc(d.date)}"/></label>`:''}
       ${d.mode==='Weekly'?`<div class="days">${['Mo','Di','Mi','Do','Fr','Sa','So'].map(day=>`<button class="day ${d.days.includes(day)?'selected':''}" data-action="day" data-value="${day}">${day}</button>`).join('')}</div>`:''}</div>`;
     if(this._step===2) body=`<div class="group"><label class="field">Alarmton<select data-field="tone">${['Classic','Gentle','Digital','Sunrise','Urgent'].map(t=>`<option ${d.tone===t?'selected':''}>${t}</option>`).join('')}</select></label>
-      <label class="field">Maximallautstärke: ${Math.round(d.volume)} %<input data-field="volume" type="range" min="10" max="100" step="10" value="${d.volume}"/></label>
+      <label class="field">Maximallautstärke: <output data-volume-label aria-live="off">${Math.round(d.volume)} %</output><input data-field="volume" type="range" min="10" max="100" step="10" value="${d.volume}"/></label>
       <label class="field">Schlummern<select data-field="snooze"><option value="5" ${d.snooze==='5'?'selected':''}>5 Minuten</option><option value="10" ${d.snooze==='10'?'selected':''}>10 Minuten</option></select></label>
       <label class="field">Status<select data-field="enabled"><option value="on" ${d.enabled?'selected':''}>Aktiv</option><option value="off" ${!d.enabled?'selected':''}>Deaktiviert</option></select></label></div>`;
     if(this._step===3) body=`<div class="summary"><div style="font-size:35px;font-weight:300">${this._esc(d.time)}</div><strong>${this._esc(d.name)}</strong><span>${this._esc(this._modeLabel(d))}</span><span>${this._esc(d.tone)} · ${d.volume} % · Schlummern ${d.snooze} Min.</span><span>${d.enabled?'Aktiviert':'Deaktiviert'}</span></div>`;
@@ -162,8 +213,11 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
         this._slot=-1; this._draft={...this._slotData(this._occupied().findIndex(x=>!x)),enabled:true};
         this._step=0;this._mode='wizard';
       } else if(action==='edit') {
-        this._slot=Number(button.dataset.index);this._draft=this._slotData(this._slot);this._step=0;this._mode='wizard';
+        this._slot=Number(button.dataset.index);this._draft=this._slotData(this._slot);this._step=0;this._mode='edit';
       } else if(action==='cancel') {this._mode='list';this._draft=null;}
+      else if(action==='save-edit') {this._collect();await this._save();}
+      else if(action==='snooze-choice') {this._collect();this._draft.snooze=button.dataset.value;}
+      else if(action==='enabled-choice') {this._collect();this._draft.enabled=button.dataset.value==='on';}
       else if(action==='back') {this._collect();if(this._step===0)this._mode='list';else this._step--;}
       else if(action==='next') {this._collect();if(this._step<3){this._step++;}else await this._save();}
       else if(action==='set-mode') {this._collect();this._draft.mode=button.dataset.value;}
@@ -192,9 +246,22 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
       // Validate all needed entities BEFORE changing anything.
       const requirements=[['AlarmClock '+i+' Uhrzeit'],['AlarmClock '+i+' Datum'],['AlarmClock '+i+' aktiv'],['AlarmClock '+i+' Name'],['AlarmClock '+i+' Modus'],['AlarmClock '+i+' Klang'],['AlarmClock '+i+' Lautstärke'],['AlarmClock '+i+' Schlummerminuten'],['AlarmClock '+i+' Wochentage'],['AlarmClock Verwaltung']];
       for(const [label] of requirements)if(!this._find(label))throw new Error('Entität fehlt: '+label);
+      // Fail before altering any alarm: ESPHome template datetime(type:time/date)
+      // is exposed as time.* / date.* in Home Assistant, not datetime.*.
+      const expectedDomains=[
+        [`AlarmClock ${i} Uhrzeit`,'time'],[`AlarmClock ${i} Datum`,'date'],
+        [`AlarmClock ${i} aktiv`,'switch'],[`AlarmClock ${i} Name`,'text'],
+        [`AlarmClock ${i} Modus`,'select'],[`AlarmClock ${i} Klang`,'select'],
+        [`AlarmClock ${i} Lautstärke`,'number'],[`AlarmClock ${i} Schlummerminuten`,'select'],
+        [`AlarmClock ${i} Wochentage`,'text'],['AlarmClock Verwaltung','text']
+      ];
+      for(const [label,domain] of expectedDomains){
+        const actual=this._find(label)?.entity_id.split('.')[0];
+        if(actual!==domain)throw new Error(`Entität ${label}: erwartet ${domain}, gefunden ${actual||'keine'}.`);
+      }
       await this._service('switch','turn_off',`AlarmClock ${i} aktiv`);
-      await this._service('datetime','set_value',`AlarmClock ${i} Uhrzeit`,{time:d.time+':00'});
-      await this._service('datetime','set_value',`AlarmClock ${i} Datum`,{date:d.date});
+      await this._service('time','set_value',`AlarmClock ${i} Uhrzeit`,{time:d.time+':00'});
+      await this._service('date','set_value',`AlarmClock ${i} Datum`,{date:d.date});
       await this._service('text','set_value',`AlarmClock ${i} Name`,{value:d.name.slice(0,24)});
       await this._service('select','select_option',`AlarmClock ${i} Modus`,{option:d.mode});
       await this._service('select','select_option',`AlarmClock ${i} Klang`,{option:d.tone});

@@ -1,22 +1,18 @@
-# Home-Assistant-Karte – AlarmClock 0.2.0
+# Tessera AlarmClock – Home-Assistant-Karte v0.2.3
 
-Die Karte ist die **Bedienoberfläche**, nicht der Wecker. Das Guition-Gerät speichert und löst Alarme weiterhin selbstständig aus.
+Die Karte zeigt den nächsten Alarm und eine übersichtliche Liste der angelegten Wecker. **Neue Wecker** werden mit dem vierstufigen Wizard angelegt; **vorhandene Wecker** öffnen eine grafische Bearbeitungsseite mit großer Zeitanzeige, Wiederholung, Ton, Lautstärke, Schlummern und Status.
 
 ## Installation
 
-1. Aus dem ZIP `ha_card/tessera-alarmclock-card.js` nach `/config/www/tessera-alarmclock-card.js` kopieren (in manchen Dateimanager-Ansichten heißt `/config` auch `/homeassistant`).
-2. Home Assistant → Einstellungen → Dashboards → Ressourcen (Menü rechts oben) → Ressource hinzufügen.
-3. Adresse `/local/tessera-alarmclock-card.js` und Typ **JavaScript-Modul**.
-4. Home Assistant im Browser einmal neu laden (bei altem Cache: Strg+F5).
-5. Eine neue **manuelle Karte** im Dashboard erstellen und den Inhalt aus `ha_card/LOVELACE_KARTE.yaml` verwenden.
-6. Bei mehreren ESPHome-AlarmClock-Geräten optional `device_filter: andy` (Teil des Entity-IDs) angeben.
+1. `tessera-alarmclock-card.js` nach `/homeassistant/www/tessera-alarmclock-card.js` kopieren (bestehende Datei überschreiben).
+2. In Home Assistant unter **Einstellungen → Dashboards → Ressourcen** die Ressource `/local/tessera-alarmclock-card.js?v=0.2.3` als **JavaScript-Modul** registrieren beziehungsweise die bestehende URL darauf ändern.
+3. Den Browser vollständig neu laden (Strg+F5).
+4. Karte auf dem Dashboard: siehe `LOVELACE_KARTE.yaml`. Bei mehreren Geräten optional `device_filter` setzen.
 
-Die 40 bisherigen Konfigurations-Entitäten bleiben für ESPHome erhalten, sind aber als `entity_category: config` gruppiert. Auf dem Dashboard genügt die einzelne AlarmClock-Karte. Die Karte benötigt keine Drittanbieter-Frontendbibliotheken.
+## Wichtiger Unterschied
 
-**Wichtig:** Erst das neue Tessera-Plugin erfolgreich kompilieren und auf das Display installieren, dann die HA-Karte nutzen. Die Karte benötigt die neuen Entitäten `AlarmClock Belegung`, `AlarmClock Verwaltung` und die fünf `AlarmClock N Name`.
+Der HA-Kartentausch aktualisiert nur Home Assistant. **Für die neue, nicht wegklickbare Alarmanzeige und die grafische Bearbeitung auf dem Guition-Display ist zusätzlich das Tessera-Firmware-Update auf AlarmClock v0.2.3 erforderlich.** Dazu alle Projektdateien ins GitHub-Repository hochladen und das Plugin für „Hilde“ aktualisieren.
 
-Bei unbekannten oder fehlenden Entitäten zeigt die Karte eine Fehlermeldung. Browser/HA müssen die ESPHome-Geräteverbindung erreichen.
+## Verlässlichkeit
 
-## Einschränkung
-
-Die Anzeige des *nächsten* Weckers berechnet lokale Datumswerte im Browser. Für eindeutige Zeitanzeigen sollte der Browser die Zeitzone Europe/Berlin verwenden. Maßgeblich für die Auslösung bleibt die lokale Wecklogik des ESP32.
+HA ist für die Konfiguration nicht die führende Instanz. Die ESP32-Firmware verwaltet die fünf Wecker lokal. Funktionstests für das Display sind im Zielgerät noch erforderlich; ein von der Firmware unabhängiger Ersatzwecker ist für wichtige Termine ratsam.

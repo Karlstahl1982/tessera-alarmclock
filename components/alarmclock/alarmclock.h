@@ -94,8 +94,12 @@ class AlarmClock final : public Component, public tessera::Plugin {
     bool active{false};
     bool snooze_pending{false};
     bool test{false};
+    bool audio_expired{false};
   } a_[COUNT];
   void start_alarm_(int i, bool test);
+  void update_alarm_overlay_();
+  static void on_overlay_stop_(lv_event_t *event);
+  static void on_overlay_snooze_(lv_event_t *event);
   void publish_occupied_();
   void play_current_(uint32_t now_ms);
   void refresh_audio_owner_(uint32_t now_ms);
@@ -109,6 +113,11 @@ class AlarmClock final : public Component, public tessera::Plugin {
   uint32_t seen_minute_{0};
   uint32_t last_song_ms_{0};
   int audio_owner_{-1};
+  lv_obj_t *alarm_overlay_{nullptr};
+  lv_obj_t *overlay_name_{nullptr}, *overlay_clock_{nullptr}, *overlay_state_{nullptr};
+  lv_obj_t *overlay_stop_{nullptr}, *overlay_snooze_{nullptr};
+  int overlay_width_{0},overlay_height_{0};
+  uint32_t last_overlay_refresh_ms_{0};
 };
 
 }  // namespace esphome::alarmclock

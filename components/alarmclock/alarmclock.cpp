@@ -164,6 +164,16 @@ class AlarmOverview final : public tessera::Card {
       if (y >= btn_y) {
         if (x < w_/2) previous_();
         else next_step_();
+      } else if (screen_ == EDIT) {
+        // Graphical editing: a large clock and four clear, finger-sized settings.
+        const int top = ui::px(112);
+        const int rh = std::max(ui::px(28), (h_-top-ui::px(97))/4);
+        if (y < top) { screen_=TIME; init_time_wheels_(); }
+        else if (y < top + rh) screen_=TYPE;
+        else if (y < top + 2*rh) screen_=SOUND;
+        else if (y < top + 3*rh) screen_=OPTIONS;
+        else if (y >= h_-ui::px(96) && y < h_-ui::px(48)) screen_=CONFIRM_DELETE;
+        else if (y < top + 4*rh) draft_.active=!draft_.active;
       } else if (screen_ == TYPE) {
         const int row = (y-ui::px(62)) / std::max(1, option_rh_());
         if (row >= 0 && row <= 2) draft_.mode = row;
@@ -192,7 +202,7 @@ class AlarmOverview final : public tessera::Card {
     render_();
   }
  private:
-  enum Screen { LIST, TYPE, TIME, DATE, DAYS, SOUND, OPTIONS, REVIEW, CONFIRM_DELETE };
+  enum Screen { LIST, EDIT, TYPE, TIME, DATE, DAYS, SOUND, OPTIONS, REVIEW, CONFIRM_DELETE };
   struct Draft {
     int hour{7}, minute{0}, year{2026}, month{11}, day{4};
     int mode{0}, tone{1}, volume{60}, snooze{5};
@@ -211,7 +221,7 @@ class AlarmOverview final : public tessera::Card {
     draft_.volume=p_->volume(slot); draft_.snooze=p_->snooze_minutes(slot);
     draft_.days=p_->weekdays(slot); draft_.active=p_->enabled(slot);
     draft_.name=p_->alarm_name(slot);
-    screen_=TYPE;
+    screen_=EDIT;
   }
   void begin_new_() {
     int free_slot=-1;
@@ -250,6 +260,14 @@ class AlarmOverview final : public tessera::Card {
     draft_.name=PRESETS[(current+1)%6];
   }
   void previous_() {
+    // Edits return to the graphic editor instead of restarting the new-alarm wizard.
+    if (!new_) {
+      if (screen_==EDIT) { screen_=LIST; return; }
+      if (screen_==TIME) capture_time_();
+      if (screen_==DATE) capture_date_();
+      screen_=EDIT;
+      return;
+    }
     switch(screen_) {
       case TYPE: screen_=LIST; break;
       case TIME: capture_time_(); screen_=TYPE; break;
@@ -268,6 +286,26 @@ class AlarmOverview final : public tessera::Card {
     }
   }
   void next_step_() {
+    if (!new_) {
+      switch(screen_) {
+        case EDIT: save_(); screen_=LIST; return;
+        case TIME: capture_time_(); screen_=EDIT; return;
+        case TYPE:
+          if (draft_.mode==1) { screen_=DATE; init_date_wheels_(); }
+          else if (draft_.mode==2) screen_=DAYS;
+          else screen_=EDIT;
+          return;
+        case DATE: capture_date_(); screen_=EDIT; return;
+        case DAYS: if (!draft_.days) draft_.days=31; screen_=EDIT; return;
+        case SOUND: case OPTIONS: screen_=EDIT; return;
+        case CONFIRM_DELETE:
+          p_->set_active(selected_,false);
+          p_->set_occupied(selected_,false);
+          screen_=LIST;
+          return;
+        default: screen_=EDIT; return;
+      }
+    }
     switch(screen_) {
       case TYPE: screen_=TIME; init_time_wheels_(); break;
       case TIME: {
@@ -350,6 +388,7 @@ class AlarmOverview final : public tessera::Card {
     }
     const char *step="";
     switch(screen_) {
+      case EDIT: step=p_->text("edit_alarm");break;
       case TYPE: step=p_->text("step_type");break;
       case TIME: step=p_->text("step_time");break;
       case DATE: step=p_->text("step_date");break;
@@ -362,8 +401,29 @@ class AlarmOverview final : public tessera::Card {
     }
     std::snprintf(b,sizeof(b),"%s · %s",new_?p_->text("add_alarm"):p_->text("edit_alarm"),step);
     heading_(b,draft_.name.c_str());
-    footer_((screen_==REVIEW)?p_->text("save"):(screen_==CONFIRM_DELETE)?p_->text("delete_alarm"):p_->text("continue"));
-    if(screen_==TYPE) {
+    footer_((screen_==REVIEW || screen_==EDIT)?p_->text("save"):(screen_==CONFIRM_DELETE)?p_->text("delete_alarm"):p_->text("continue"));
+    if (screen_==EDIT) {
+      // Dedicated edit view: tap the big clock or any setting to edit it.
+      std::snprintf(b,sizeof(b),"%02d:%02d",draft_.hour,draft_.minute);
+      place_label(rows_[7],0,ui::px(56),w_,ui::px(53),b);
+      lv_obj_set_style_text_font(rows_[7],ui::font(Font::VALUE),0);
+      toggle_hidden(rows_[7],true);
+      const int top=ui::px(112);
+      const int rh=std::max(ui::px(28),(h_-top-ui::px(97))/4);
+      const char *mode=draft_.mode==0?p_->text("mode_next"):draft_.mode==1?p_->text("mode_date"):p_->text("mode_weekly");
+      std::snprintf(b,sizeof(b),"%s: %s  >",p_->text("step_type"),mode);
+      chip_(rows_[0],ui::px(5),top,w_-ui::px(10),rh-ui::px(3),b);
+      const char *tone=p_->text(draft_.tone==0?"tone_classic":draft_.tone==1?"tone_gentle":draft_.tone==2?"tone_digital":draft_.tone==3?"tone_sunrise":"tone_urgent");
+      std::snprintf(b,sizeof(b),"%s: %s  >",p_->text("step_sound"),tone);
+      chip_(rows_[1],ui::px(5),top+rh,w_-ui::px(10),rh-ui::px(3),b);
+      std::snprintf(b,sizeof(b),"%s: %d%%  /  %d min  >",p_->text("volume"),draft_.volume,draft_.snooze);
+      chip_(rows_[2],ui::px(5),top+rh*2,w_-ui::px(10),rh-ui::px(3),b);
+      std::snprintf(b,sizeof(b),"%s: %s",p_->text("enabled"),draft_.active?p_->text("on"):p_->text("off"));
+      chip_(rows_[3],ui::px(5),top+rh*3,w_-ui::px(10),rh-ui::px(3),b,draft_.active);
+      for(int i=0;i<4;++i) toggle_hidden(rows_[i],true);
+      chip_(rows_[6],ui::px(22),h_-ui::px(94),w_-ui::px(44),ui::px(43),p_->text("delete_alarm"));
+      toggle_hidden(rows_[6],true);
+    } else if(screen_==TYPE) {
       for(int i=0;i<3;++i) {
         const char *mode=i==0?p_->text("mode_next"):i==1?p_->text("mode_date"):p_->text("mode_weekly");
         chip_(rows_[i],ui::px(4),ui::px(62)+i*option_rh_(),w_-ui::px(8),option_rh_()-ui::px(5),mode,i==draft_.mode);
@@ -432,51 +492,89 @@ class AlarmOverview final : public tessera::Card {
   lv_obj_t *hour_{},*minute_{},*day_{},*month_{},*year_{};
 };
 
-class AlarmPopup final : public tessera::Popup {
- public:
-  explicit AlarmPopup(AlarmClock *p) : p_(p) {}
-  void open(const tessera::PopupContext &c) override {
-    w_=c.width; h_=c.height;
-    title_=ui::label(c.parent,Font::HEADLINE,theme::INK);
-    clock_=ui::label(c.parent,Font::VALUE,theme::INK);
-    status_=ui::label(c.parent,Font::BODY,theme::MUTED);
-    stop_=ui::label(c.parent,Font::BODY_LARGE,theme::INK);
-    snooze_=ui::label(c.parent,Font::BODY_LARGE,theme::INK);
-    on_tick(0);
+
+
+// System-layer alarm. Unlike a Tessera popup it cannot be dismissed by a tap
+// outside the card, a swipe, or a normal page change. The full-screen opaque
+// LVGL object intercepts all touch input until Stop or Snooze is pressed.
+void AlarmClock::on_overlay_stop_(lv_event_t *event) {
+  auto *self=static_cast<AlarmClock *>(lv_event_get_user_data(event));
+  if (self) self->stop_alarm(self->first_ringing());
+}
+void AlarmClock::on_overlay_snooze_(lv_event_t *event) {
+  auto *self=static_cast<AlarmClock *>(lv_event_get_user_data(event));
+  if (self) {
+    int i=self->first_ringing();
+    if (i>=0 && self->a_[i].snoozes_used<3 && !self->a_[i].test) self->snooze_alarm(i);
   }
-  void on_tick(uint32_t) override {
-    int i=p_->first_ringing();
-    if (i<0) { tessera::close_popup(p_); return; }
-    char b[70];
-    std::snprintf(b,sizeof(b),"%s %d",p_->text("alarm"),i+1);
-    place_label(title_,0,0,w_*3/4,ui::line_height(Font::HEADLINE),b);
-    std::snprintf(b,sizeof(b),"%02d:%02d",p_->hour(i),p_->minute(i));
-    place_label(clock_,0,ui::px(62),w_,ui::px(70),b);
-    std::snprintf(b,sizeof(b),"%s: %d/3",p_->text("snooze"),p_->snoozes_used(i));
-    place_label(status_,0,ui::px(138),w_,ui::line_height(Font::BODY),b);
-    place_label(snooze_,0,ui::px(190),w_/2,ui::mm(13),p_->snoozes_used(i)<3?p_->text("snooze"):"--");
-    place_label(stop_,w_/2,ui::px(190),w_/2,ui::mm(13),p_->text("stop"));
+}
+void AlarmClock::update_alarm_overlay_() {
+  const int active=first_ringing();
+  if (active<0) {
+    if (alarm_overlay_) {
+      lv_obj_delete(alarm_overlay_);
+      alarm_overlay_=nullptr;
+      overlay_name_=overlay_clock_=overlay_state_=overlay_stop_=overlay_snooze_=nullptr;
+    }
+    return;
   }
-  void on_theme() override {
-    ui::set_color(title_,theme::INK); ui::set_color(clock_,theme::INK);
-    ui::set_color(status_,theme::MUTED); ui::set_color(stop_,theme::INK);
-    ui::set_color(snooze_,theme::INK);
+  if (!alarm_overlay_) {
+    lv_display_t *display=lv_display_get_default();
+    if (!display) return;
+    overlay_width_=lv_display_get_horizontal_resolution(display);
+    overlay_height_=lv_display_get_vertical_resolution(display);
+    // The system layer is above regular cards and Tessera's popup layer.
+    alarm_overlay_=lv_obj_create(lv_layer_sys());
+    lv_obj_set_pos(alarm_overlay_,0,0);
+    lv_obj_set_size(alarm_overlay_,overlay_width_,overlay_height_);
+    lv_obj_set_style_radius(alarm_overlay_,0,0);
+    lv_obj_set_style_border_width(alarm_overlay_,0,0);
+    lv_obj_set_style_bg_color(alarm_overlay_,lv_color_hex(0x101827),0);
+    lv_obj_set_style_bg_opa(alarm_overlay_,LV_OPA_COVER,0);
+    lv_obj_add_flag(alarm_overlay_,LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(alarm_overlay_,LV_OBJ_FLAG_SCROLLABLE);
+    overlay_name_=ui::label(alarm_overlay_,Font::TITLE,theme::INK);
+    overlay_clock_=ui::label(alarm_overlay_,Font::VALUE,theme::INK);
+    overlay_state_=ui::label(alarm_overlay_,Font::BODY_LARGE,theme::INK);
+    const int margin=std::max(12,overlay_width_/22);
+    const int gap=std::max(10,overlay_width_/35);
+    const int button_width=(overlay_width_-2*margin-gap)/2;
+    const int button_y=overlay_height_*74/100;
+    const int button_height=std::min(78,overlay_height_*18/100);
+    auto add_button=[&](int x,lv_color_t color,lv_event_cb_t cb) -> lv_obj_t * {
+      lv_obj_t *btn=lv_button_create(alarm_overlay_);
+      lv_obj_set_pos(btn,x,button_y);
+      lv_obj_set_size(btn,button_width,button_height);
+      lv_obj_set_style_radius(btn,14,0);
+      lv_obj_set_style_bg_color(btn,color,0);
+      lv_obj_add_event_cb(btn,cb,LV_EVENT_CLICKED,this);
+      return btn;
+    };
+    lv_obj_t *snooze_btn=add_button(margin,lv_color_hex(0x245C8D),on_overlay_snooze_);
+    lv_obj_t *stop_btn=add_button(margin+button_width+gap,lv_color_hex(0xD14D56),on_overlay_stop_);
+    overlay_snooze_=ui::label(snooze_btn,Font::BODY_LARGE,theme::INK);
+    overlay_stop_=ui::label(stop_btn,Font::BODY_LARGE,theme::INK);
+    for (auto *o:{overlay_name_,overlay_clock_,overlay_state_,overlay_snooze_,overlay_stop_})
+      lv_obj_set_style_text_color(o,lv_color_hex(0xFFFFFF),0);
+    place_label(overlay_snooze_,0,0,button_width,button_height,text("snooze"));
+    place_label(overlay_stop_,0,0,button_width,button_height,text("stop"));
   }
-  void on_tap() override {
-    auto pt=tessera::tap_point();
-    if (pt.y<ui::px(175)) return;
-    int i=p_->first_ringing();
-    if (i<0) return;
-    if (pt.x < w_/2) p_->snooze_alarm(i);
-    else p_->stop_alarm(i);
-    if (!p_->any_ringing()) tessera::close_popup(p_);
-    else on_tick(0);
+  char value[96];
+  std::snprintf(value,sizeof(value),"%s",alarm_name(active));
+  place_label(overlay_name_,12,overlay_height_*16/100,overlay_width_-24,45,value);
+  std::snprintf(value,sizeof(value),"%02d:%02d",hour(active),minute(active));
+  place_label(overlay_clock_,8,overlay_height_*29/100,overlay_width_-16,overlay_height_*21/100,value);
+  std::snprintf(value,sizeof(value),"%s %d/3%s",text("snooze"),a_[active].snoozes_used,
+                a_[active].audio_expired?"  |  Ton beendet":"");
+  place_label(overlay_state_,8,overlay_height_*55/100,overlay_width_-16,48,value);
+  const bool can_snooze=!a_[active].test && a_[active].snoozes_used<3;
+  lv_obj_t *button=lv_obj_get_parent(overlay_snooze_);
+  if (button) {
+    if (can_snooze) lv_obj_remove_flag(button,LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(button,LV_OBJ_FLAG_HIDDEN);
   }
- private:
-  AlarmClock *p_{};
-  int w_{0},h_{0};
-  lv_obj_t *title_{},*clock_{},*status_{},*stop_{},*snooze_{};
-};
+  lv_obj_move_foreground(alarm_overlay_);
+}
 
 int AlarmClock::hour(int i) const { return a_[i].time && a_[i].time->has_state() ? a_[i].time->hour : 7; }
 int AlarmClock::minute(int i) const { return a_[i].time && a_[i].time->has_state() ? a_[i].time->minute : 0; }
@@ -640,11 +738,10 @@ int AlarmClock::next_alarm() const {
 void AlarmClock::start_alarm_(int i,bool test) {
   Slot &s=a_[i];
   if (s.active) return;
-  s.active=true; s.test=test; s.started_ms=millis(); s.snooze_pending=false;
+  s.active=true; s.test=test; s.started_ms=millis(); s.snooze_pending=false; s.audio_expired=false;
   if (!any_ringing() || audio_owner_<0 || !a_[audio_owner_].active) audio_owner_=i;
   tessera::wake(this);
-  if (!tessera::popup_shown(this))
-    tessera::show_popup(this,[this](){ return new AlarmPopup(this); },tessera::PopupWidth::WIDE);
+  update_alarm_overlay_();
   last_song_ms_=0;
   play_current_(millis());
   tessera::refresh();
@@ -654,10 +751,10 @@ void AlarmClock::stop_alarm(int i) {
   if (i<0 || i>=COUNT) return;
   Slot &s=a_[i]; s.active=false; s.snooze_pending=false; s.test=false; s.snoozes_used=0;
   refresh_audio_owner_(millis());
-  if(!any_ringing() && tessera::popup_shown(this)) tessera::close_popup(this);
+  update_alarm_overlay_();
   tessera::refresh();
 }
-void AlarmClock::stop_all() { for(int i=0;i<COUNT;++i) {a_[i].active=false; a_[i].snooze_pending=false; a_[i].snoozes_used=0;} audio_owner_=-1; if(player_) player_->stop(); if(tessera::popup_shown(this)) tessera::close_popup(this); tessera::refresh(); }
+void AlarmClock::stop_all() { for(int i=0;i<COUNT;++i) {a_[i].active=false; a_[i].snooze_pending=false; a_[i].snoozes_used=0;} audio_owner_=-1; if(player_) player_->stop(); update_alarm_overlay_(); tessera::refresh(); }
 void AlarmClock::snooze_alarm(int i) {
   if(i<0 || i>=COUNT || !a_[i].active) return;
   Slot &s=a_[i];
@@ -665,12 +762,15 @@ void AlarmClock::snooze_alarm(int i) {
   s.active=false; s.snooze_pending=true; ++s.snoozes_used;
   s.snooze_due_ms=millis()+static_cast<uint32_t>(snooze_minutes(i))*60000u;
   refresh_audio_owner_(millis());
-  if (!any_ringing() && tessera::popup_shown(this)) tessera::close_popup(this);
+  update_alarm_overlay_();
   tessera::refresh();
 }
 void AlarmClock::refresh_audio_owner_(uint32_t now_ms) {
-  int next=first_ringing();
-  if (next==audio_owner_ && next>=0 && a_[next].active) return;
+  int next=-1;
+  if (audio_owner_>=0 && audio_owner_<COUNT && a_[audio_owner_].active && !a_[audio_owner_].audio_expired)
+    next=audio_owner_;
+  else for (int i=0;i<COUNT;++i) if (a_[i].active && !a_[i].audio_expired) { next=i; break; }
+  if (next==audio_owner_) return;
   audio_owner_=next;
   if(player_) player_->stop();
   last_song_ms_=0;
@@ -679,6 +779,7 @@ void AlarmClock::refresh_audio_owner_(uint32_t now_ms) {
 void AlarmClock::play_current_(uint32_t now_ms) {
   if(!player_ || audio_owner_<0) return;
   const Slot &s=a_[audio_owner_];
+  if (s.audio_expired) return;
   // Safe cap: 100% in AlarmClock means 15% of ESPHome RTTTL's digital gain.
   const float max_gain = 0.15f * volume(audio_owner_) / 100.0f;
   const float ramp = std::min(1.0f, 0.10f+0.90f * static_cast<float>(now_ms-s.started_ms)/60000.0f);
@@ -736,10 +837,22 @@ void AlarmClock::on_interval(uint32_t now_ms) {
   for(int i=0;i<COUNT;++i) {
     Slot &s=a_[i];
     if(s.snooze_pending && static_cast<int32_t>(now_ms-s.snooze_due_ms)>=0) start_alarm_(i,false);
-    if(s.active && static_cast<uint32_t>(now_ms-s.started_ms)>=(s.test?15000u:300000u)) stop_alarm(i);
+    // Audio ends after 5 minutes (15 seconds for a test), but the alarm stays
+    // pending until a conscious Stop or Snooze action acknowledges it.
+    if(s.active && !s.audio_expired &&
+       static_cast<uint32_t>(now_ms-s.started_ms)>=(s.test?15000u:300000u)) {
+      s.audio_expired=true;
+      refresh_audio_owner_(now_ms);
+    }
   }
-  if(audio_owner_<0 || !a_[audio_owner_].active) refresh_audio_owner_(now_ms);
+  if(audio_owner_<0 || !a_[audio_owner_].active || a_[audio_owner_].audio_expired)
+    refresh_audio_owner_(now_ms);
   if(audio_owner_>=0) play_current_(now_ms);
+  if (any_ringing() && (alarm_overlay_==nullptr ||
+       static_cast<uint32_t>(now_ms-last_overlay_refresh_ms_)>=400u)) {
+    update_alarm_overlay_();
+    last_overlay_refresh_ms_=now_ms;
+  }
 }
 bool AlarmClock::settings(tessera::SettingsPage &page) {
   page.icon="\U000F0020";

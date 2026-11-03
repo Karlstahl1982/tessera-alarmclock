@@ -9,7 +9,23 @@
 #include <initializer_list>
 #include <utility>
 struct lv_obj_t {};
-enum {LV_TEXT_ALIGN_CENTER,LV_OBJ_FLAG_HIDDEN,LV_PART_MAIN,LV_PART_SELECTED,LV_ROLLER_MODE_INFINITE,LV_ROLLER_MODE_NORMAL,LV_ANIM_OFF,LV_OPA_COVER};
+struct lv_display_t {};
+struct lv_event_t {};
+using lv_color_t=int;
+using lv_event_cb_t=void(*)(lv_event_t*);
+inline lv_color_t lv_color_hex(int c){return c;}
+inline lv_display_t *lv_display_get_default(){static lv_display_t d;return &d;}
+inline int lv_display_get_horizontal_resolution(lv_display_t*){return 480;}
+inline int lv_display_get_vertical_resolution(lv_display_t*){return 480;}
+inline lv_obj_t *lv_layer_sys(){return nullptr;}
+inline lv_obj_t *lv_obj_create(lv_obj_t*){return nullptr;}
+inline lv_obj_t *lv_button_create(lv_obj_t*){return nullptr;}
+inline void lv_obj_delete(lv_obj_t*){}
+inline void lv_obj_move_foreground(lv_obj_t*){}
+inline lv_obj_t *lv_obj_get_parent(lv_obj_t*){return nullptr;}
+inline void *lv_event_get_user_data(lv_event_t*){return nullptr;}
+inline void lv_obj_add_event_cb(lv_obj_t*,lv_event_cb_t,int,void*){}
+enum {LV_TEXT_ALIGN_CENTER,LV_OBJ_FLAG_HIDDEN,LV_PART_MAIN,LV_PART_SELECTED,LV_ROLLER_MODE_INFINITE,LV_ROLLER_MODE_NORMAL,LV_ANIM_OFF,LV_OPA_COVER,LV_OBJ_FLAG_CLICKABLE,LV_OBJ_FLAG_SCROLLABLE,LV_EVENT_CLICKED};
 inline void lv_obj_set_pos(lv_obj_t*,int,int){}
 inline void lv_obj_set_size(lv_obj_t*,int,int){}
 inline void lv_obj_set_width(lv_obj_t*,int){}
