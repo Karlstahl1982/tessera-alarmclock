@@ -75,8 +75,8 @@ class NextAlarmTile final : public tessera::Tile {
     heading_ = ui::label(c.parent, Font::TITLE, theme::INK);
     clock_ = ui::label(c.parent, Font::VALUE, theme::INK);
     detail_ = ui::label(c.parent, Font::BODY_LARGE, theme::MUTED);
-    // Normal: editing pencil. Pending snooze: red X to cancel that snooze.
-    // Draw both as simple LVGL rectangles (no font-specific Unicode glyphs).
+    // No action icon in the normal state. During snooze only, show a
+    // red X that cancels the next pending snooze. No Unicode glyphs required.
     pencil_circle_ = lv_obj_create(c.parent);
     lv_obj_remove_flag(pencil_circle_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_flag(pencil_circle_, LV_OBJ_FLAG_SCROLLABLE);
@@ -145,6 +145,14 @@ class NextAlarmTile final : public tessera::Tile {
  private:
   void paint_action_icon_() {
     if (!pencil_circle_) return;
+    const int slot = p_->next_alarm();
+    const bool cancel_snooze = slot >= 0 && p_->snoozing(slot);
+    // Both the background and the nine independent LVGL siblings must be
+    // hidden: hiding only the background would leave the X's pixels visible.
+    toggle_hidden(pencil_circle_, cancel_snooze);
+    for (auto *piece : pencil_parts_) toggle_hidden(piece, cancel_snooze);
+    if (!cancel_snooze) return;
+
     const int d = ui::px(40);
     const int x = w_ - d - ui::px(8);
     const int y = h_ - d - ui::px(7);
@@ -152,23 +160,14 @@ class NextAlarmTile final : public tessera::Tile {
     lv_obj_set_size(pencil_circle_, d, d);
     lv_obj_set_style_radius(pencil_circle_, ui::px(12), 0);
     lv_obj_set_style_bg_opa(pencil_circle_, LV_OPA_COVER, 0);
-    const int slot = p_->next_alarm();
-    const bool cancel_snooze = slot >= 0 && p_->snoozing(slot);
-    lv_obj_set_style_bg_color(pencil_circle_,
-                              cancel_snooze ? lv_color_hex(0xBD3549) : ui::color(theme::ACCENT), 0);
-    // Nine overlapping pixels create a distinct X (rather than the old stair
-    // shape). The pencil uses a diagonal body, tip and eraser.
+    lv_obj_set_style_bg_color(pencil_circle_, lv_color_hex(0xBD3549), 0);
     static constexpr int CROSS[9][4] = {
       {10,10,6,6},{14,14,6,6},{18,18,6,6},{22,22,6,6},{26,26,6,6},
       {26,10,6,6},{22,14,6,6},{14,22,6,6},{10,26,6,6}
     };
-    static constexpr int PENCIL[9][4] = {
-      {8,29,5,5},{11,25,6,6},{14,22,6,6},{17,19,6,6},{20,16,6,6},
-      {23,13,6,6},{26,10,6,6},{29,8,4,6},{7,34,6,2}
-    };
     for (int i=0;i<9;++i) {
-      const int *piece = cancel_snooze ? CROSS[i] : PENCIL[i];
-      auto *o=pencil_parts_[i];
+      const int *piece = CROSS[i];
+      auto *o = pencil_parts_[i];
       lv_obj_set_pos(o,x+ui::px(piece[0]),y+ui::px(piece[1]));
       lv_obj_set_size(o,ui::px(piece[2]),ui::px(piece[3]));
       lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);

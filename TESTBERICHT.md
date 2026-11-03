@@ -1,8 +1,14 @@
-# Testbericht – 0.3.7
+# Testbericht – Tessera AlarmClock v0.3.8
 
-- Statische Manifest-, YAML-, JSON-, Übersetzungs- und Paketprüfung: bestanden.
-- C++-Syntaxprüfung mit ESPHome-/Tessera-Testdoubles: bestanden.
-- Neuer C++-Laufzeittest `test_tile_cancel.cpp`: bestanden. Verifiziert, dass eine Berührung außerhalb des X den Schlummerzustand erhält und die Übersicht öffnet; eine Berührung im X-Bereich beendet den Schlummeralarm ohne Kartenwechsel; anschließend funktioniert wieder das normale Bearbeiten.
-- Vorhandene Audiostart-, Lautstärke-, Zeitstempel-, Schlummer- und Home-Assistant-Tests: bestanden.
-- Gesamtergebnis: **26 Tests erfolgreich** (Python-Unittest-Suite, darin C++/JS-Laufzeitprüfungen).
-- Einschränkung: **Kein echter Firmware-Build oder Touch-Hardwaretest auf Hilde durchgeführt.**
+## Automatisierte Prüfungen
+- **27 Tests erfolgreich** (`python -m unittest discover -s tests -p 'test_*.py' -v`).
+- C++-Syntax- und Mock-Laufzeittests einschließlich geplanter Weckzeit, Audiostart, Lautstärkestufen, Schlummermodus und zielgerichtetem Touch-Abbruch erfolgreich.
+- Neue Regression prüft: Normales Bearbeiten-Symbol entfernt; sämtliche Einzelkomponenten im Normalzustand versteckt; rotes X wird nur bei Schlummern gezeichnet.
+- YAML-/Manifest-, Übersetzungs-, JavaScript- und Layout-Prüfungen erfolgreich.
+
+## Offene Hardwareprüfung
+- [ ] Echter ESPHome-Firmware-Build in der Tessera-/Hilde-Umgebung.
+- [ ] Sichtkontrolle auf Hilde: **kein** Normalzustand-Symbol, rotes X nur beim Schlummern.
+- [ ] Touchkontrolle: normale Kachel öffnet Übersicht, rotes X beendet nur betreffenden Schlummeralarm.
+
+Es gab keine Änderungen an Audio, persistentem Weckerspeicher, Home-Assistant-Anbindung oder Schaltlogik außerhalb der Icon-Sichtbarkeit.

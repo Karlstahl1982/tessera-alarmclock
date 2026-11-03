@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.3.7')
+        self.assertEqual(self.manifest['version'],'0.3.8')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -116,6 +116,16 @@ class PackageTest(unittest.TestCase):
         self.assertNotIn('p_->text("delete_alarm"));\n      toggle_hidden(rows_[6]',c)
         for l in ('de','en'):
             self.assertIn('cancel_snooze',json.loads((ROOT/f'translations/{l}.json').read_text())['screen'])
+
+    def test_dashboard_only_cancel_icon_during_snooze(self):
+        tile=self.cpp.split('class NextAlarmTile final',1)[1].split('class AlarmOverview final',1)[0]
+        self.assertIn('toggle_hidden(pencil_circle_, cancel_snooze);',tile)
+        self.assertIn('for (auto *piece : pencil_parts_) toggle_hidden(piece, cancel_snooze);',tile)
+        self.assertIn('if (!cancel_snooze) return;',tile)
+        self.assertIn('static constexpr int CROSS[9][4]',tile)
+        self.assertNotIn('PENCIL[',tile)
+        # Normal tile contact must still open the alarm overview.
+        self.assertIn('tessera::open_card(p_->plugin_id(), "overview"',tile)
 
     def test_progress_bar_layout_and_stepped_gain(self):
         self.assertIn('overlay_progress_fill_=lv_obj_create(alarm_overlay_)',self.cpp)
