@@ -1,37 +1,39 @@
-# Projektzusammenfassung – Tessera AlarmClock
+# Projektzusammenfassung – Tessera AlarmClock 0.3.4
 
-**Version:** 0.3.3 (Beta)  
-**Ziel:** Verhindern, dass der **erste planmäßige Alarm sofort als „Alarmton beendet“** erscheint. Die lokale Audioausgabe, Lautstärkestufen, Touchbedienung und das Schlummern bleiben erhalten.
+## Ziel
 
-## Arbeitsschritte / Status
+Ein schlanker, am ESP32 autonom laufender Wecker mit maximal fünf Einträgen, Touchbedienung, sauberer Schlummerlogik und klarer grafischer Lautstärkeanzeige. Home Assistant soll nur noch zentrale Funktionen anzeigen und steuern.
 
-- [x] Vollständiges Paket v0.3.2 als Basis übernommen; alle Komponenten vorhanden.
-- [x] Ursache identifiziert: Beim ersten planmäßigen Alarm vermischte der Tick einen älteren Scheduler-Zeitwert mit einem neueren `millis()`-Wert. Die Subtraktion ohne Vorzeichen lief bereits bei 1 ms Differenz über und markierte den Audio-Timeout als abgelaufen.
-- [x] Ein reproduzierbarer Laufzeittest schlägt auf v0.3.2 fehl und besteht nach der Korrektur.
-- [x] Startzeit und Timeoutprüfung innerhalb des gesamten Intervalls auf denselben monotonen Zeitstempel umgestellt.
-- [x] Zeitdifferenzen gegen leicht negative Abweichungen abgesichert; auch einen echten Zählerüberlauf geprüft.
-- [x] Bestehende GUI, fünf Wecker, 60-Sekunden-Lautstärkerampe, 75-Sekunden-Testalarm und bis zu drei Schlummer-Wiederholungen unverändert gelassen.
-- [x] Native C++-Mocktests, JS-Prüfungen, Paket-/YAML- und Layouttests bestanden.
-- [ ] Firmware mit Tessera/ESPHome 2026.9.0 auf dem Zielsystem kompilieren.
-- [ ] OTA-Update auf Guition „Hilde“ durchführen.
-- [ ] **Ersten planmäßigen Alarm direkt nach einem Geräteneustart** sowie einen Alarm nach Schlummern akustisch testen.
-- [ ] Im echten Betrieb Ton, 6-Sekunden-Countdown und Lautstärkestufen bis 60 Sekunden prüfen.
+## Arbeitsschritte
 
-## Probleme und Umgehungen
+- [x] Bestehende v0.3.3 als Grundlage übernommen.
+- [x] Fortschrittsbalkenlayout korrigiert und 60-Sekunden-Füllstand synchronisiert.
+- [x] Audio-Lautstärkeverlauf sekündlich statt in 6-Sekunden-Stufen angepasst.
+- [x] Verbleibende Zeit bis zur Ziellautstärke und aktuelle Software-Prozentzahl im Alarmfenster.
+- [x] Schlummernde einmalige Wecker weiterhin im 2×3-Raster und auf der Hauptkachel sichtbar.
+- [x] Zentrale HA-Entitäten eingerichtet: nächster Wecker, Unterdrückung, Stoppen.
+- [x] Per-Wecker-Entitäten intern geschaltet und Home-Assistant-Karte reduziert.
+- [x] Automatisierte Mock-, Struktur- und Frontendtests ausgeführt (24 erfolgreich).
+- [ ] Echter ESPHome-Build und Flash auf das Guition-Display.
+- [ ] Hardwareseitige Funktionsprüfung der neuen Balken- und Lautstärkedarstellung.
+- [ ] HA-Entitätenregistrierung und zentrale Bedienung prüfen.
 
-1. **Erster Alarm sofort beendet:** `on_interval()` erhielt den vom Framework zuvor erfassten Tick und rief `start_alarm_()` auf, das `millis()` etwas später las. `uint32_t(now - start)` wurde bei negativem Millisekunden-Unterschied zu einem Wert von fast 49 Tagen. **Fix:** ein konsistenter Start-Zeitstempel pro Tick; negative Abweichungen werden defensiv auf null geklemmt.
-2. **RTTTL/I²S-Kaltstart und Lautstärkeänderung (aus 0.3.2):** Die bestehenden begrenzten Audio-Neustarts und die direkte Lautstärkestufenregelung am I²S-Speaker bleiben erhalten; diese Mechanismen werden nicht als Lösung des Timeoutfehlers missbraucht.
-3. **Hardwaretest noch offen:** Die Testumgebung bildet Tessera und ESPHome nach. Der C++-Mocktest bestätigt die Alarmzustandslogik, kann die reale Lautsprecherausgabe aber nicht messen.
-4. **Keine RTC:** Nach völligem Stromausfall ist eine erneute gültige Zeitsynchronisierung erforderlich.
+## Probleme und umgangene Fehler
+
+1. **Balken ohne Fortschritt:** Ein verschachteltes LVGL-Objekt konnte durch Container-Style/Padding verdeckt bzw. falsch platziert sein. Abhilfe: zwei unabhängige Rechtecke, definierte Positionen und Null-Padding. Ob das den Fehler vollständig behebt, muss die Hardwareprüfung zeigen.
+2. **Akustische Sprünge:** Gain wurde nur in 6-Sekunden-Schritten gesetzt. Jetzt lineare Interpolation und Audio-Update nach jeweils einer Sekunde, während die Anzeige über die volle Minute läuft.
+3. **Verschwundener Schlummerwecker:** Einmalige Wecker wurden beim ersten Auslösen deaktiviert und deshalb in der „Nächster Wecker“-Auswahl ignoriert. Nun hat ein anstehender Schlummeralarm Vorrang, unabhängig vom Aktivierungsstatus.
+4. **Zu viele HA-Entitäten:** Mit `internal: true` werden die Einzel-Wecker-Entitäten nicht mehr veröffentlicht. Achtung: Home Assistant kann alte Einträge in der Registry behalten; diese werden dort unter Umständen als nicht verfügbar angezeigt und müssen bei Bedarf manuell entfernt werden.
+5. **Veraltete HA-Karte:** Die alte Karte kann nach Internalisierung der Wecker nicht mehr funktionieren. Die beigelegte neue Karte verwendet ausschließlich die drei zentralen Entitäten.
 
 ## Installation
 
-1. ZIP vollständig entpacken. Alle Dateien/Unterordner direkt nach `https://github.com/Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen und bestehende Dateien ersetzen.
-2. In Tessera **„Plugins → Mit einem Link hinzufügen → Branch testen“** den Repository-Link und `main` wählen. **Version 0.3.3 und neuen Commit prüfen.**
-3. Vorhandene Audio-YAML und Home-Assistant-Karte unverändert lassen.
-4. Zunächst **ESPHome-Firmware nur kompilieren**. Bei Erfolg Firmware auf „Hilde“ übertragen.
-5. Display neu starten und einen einmaligen Wecker für die nächsten 2–3 Minuten einstellen. Beim ersten Klingeln muss Ton kommen; „Alarmton beendet“ darf nicht sofort erscheinen.
-6. Testweise auf **Schlummern** gehen und die erneute Auslösung prüfen. Außerdem Tonstufen (alle 6 s) und Stoppen testen.
-7. Solange die erste reguläre Weckzeit nicht in der Praxis geprüft wurde, einen unabhängigen Zweitwecker verwenden.
+1. ZIP entpacken und seinen **Inhalt** direkt in das Stammverzeichnis des GitHub-Repositories `Karlstahl1982/tessera-alarmclock` übertragen; auf `main` committen.
+2. Tessera → Plugins → Mit Link hinzufügen → Branch testen; Version 0.3.4 und Commit prüfen.
+3. Firmware zuerst nur kompilieren. Bei erfolgreichem Build per OTA auf „Hilde“ übertragen.
+4. Testalarm starten: Ton, 60-Sekunden-Lautstärkeverlauf, Balken und Countdown prüfen.
+5. Einen Wecker schlummern lassen: er muss weiterhin im Raster und in der Hauptkachel auftauchen.
+6. `ha_card/tessera-alarmclock-card.js` nach `/homeassistant/www/` kopieren; HA-Ressource auf `/local/tessera-alarmclock-card.js?v=0.3.4` ändern und Browser neu laden.
+7. Zentralen Unterdrückungsschalter testen; zum Schluss unbedingt wieder AUS schalten.
 
-**Rollback:** Über den vorherigen GitHub-Commit / Plugin-Stand v0.3.2 wiederherstellen, falls der Build scheitert. Hinweis: Dieser Stand enthält den hier behobenen Erstalarm-Fehler.
+**Grenze:** Ein echter Firmware-Build und Hardwaretest waren in dieser Umgebung nicht verfügbar. Bis zur erfolgreichen Praxisprüfung einen unabhängigen Backup-Wecker verwenden.

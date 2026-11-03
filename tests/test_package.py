@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.3.3')
+        self.assertEqual(self.manifest['version'],'0.3.4')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -23,11 +23,11 @@ class PackageTest(unittest.TestCase):
     def test_five_slots_and_entity_binds(self):
         p=self.package
         self.assertEqual(len(p['datetime']),10)
-        self.assertEqual(len(p['switch']),5)
+        self.assertEqual(len(p['switch']),6)
         self.assertEqual(len(p['select']),15)
         self.assertEqual(len(p['number']),5)
         self.assertEqual(len(p['text']),11)
-        self.assertEqual(len(p['text_sensor']),1)
+        self.assertEqual(len(p['text_sensor']),2)
         for i in range(1,6):
             for field in ('time','date','enabled','mode','tone','snooze','volume','days','name'):
                 entity=f'ac_{field}_{i}'
@@ -36,7 +36,7 @@ class PackageTest(unittest.TestCase):
         self.assertEqual(p['alarmclock']['occupied_sensor'],'ac_occupied')
         all_ids=[e['id'] for section in ['datetime','switch','select','number','text','text_sensor'] for e in p[section]]
         self.assertEqual(len(all_ids),len(set(all_ids)))
-        self.assertTrue(all(e.get('entity_category') in ('config','diagnostic') for section in ['datetime','switch','select','number','text','text_sensor'] for e in p[section]))
+        self.assertTrue(all(e.get('entity_category') in ('config','diagnostic',None) for section in ['datetime','switch','select','number','text','text_sensor'] for e in p[section]))
 
     def test_restore_and_audio_preserved(self):
         p=self.package
@@ -72,7 +72,7 @@ class PackageTest(unittest.TestCase):
         for token in ('const bool already_ringing=any_ringing();',
                       'play_current_(now_ms); // Start audio promptly',
                       'speaker_->set_volume(gain);',
-                      'VolumeRamp::current_percent(', 'VolumeRamp::seconds_to_next(',
+                      'VolumeRamp::current_percent(', 'VolumeRamp::seconds_remaining(',
                       'last_audio_attempt_ms_', 'audio_start_retries_<2',
                       'overlay_countdown_', 'overlay_progress_fill_'):
             self.assertIn(token,c)
@@ -85,6 +85,31 @@ class PackageTest(unittest.TestCase):
         self.assertIn('start_alarm_(i,false,now_ms);', c)
         self.assertIn('elapsed_since(now_ms,s.started_ms)', c)
         self.assertNotIn('static_cast<uint32_t>(now_ms-s.started_ms)', c)
+
+    def test_snooze_visible_and_global_suppression(self):
+        c=self.cpp
+        p=self.package
+        for token in ('bool AlarmClock::snoozing(', 'snooze_remaining_seconds(',
+                      'if(snooze_index>=0) return snooze_index;',
+                      'snoozing?snooze_info:freq', 'p_->text("snoozing")',
+                      'void AlarmClock::set_suppressed(bool on)',
+                      'if (!suppressed()) start_alarm_(i,false,now_ms);'):
+            self.assertIn(token,c)
+        central=[e.get('name') for group in ['switch','text_sensor','button'] for e in p[group] if not e.get('internal')]
+        self.assertCountEqual(central,['AlarmClock Wecker unterdrücken','AlarmClock Nächster Wecker','AlarmClock Alarm stoppen'])
+        for group in ['datetime','switch','select','number','text','text_sensor']:
+            for entry in p[group]:
+                if entry.get('id','').startswith('ac_') and entry.get('id') not in ('ac_suppress','ac_next_status'):
+                    self.assertTrue(entry.get('internal'),entry)
+        self.assertTrue(any(b.get('name')=='AlarmClock Testalarm' and b.get('internal') for b in p['button']))
+
+    def test_progress_bar_layout_and_smooth_gain(self):
+        self.assertIn('overlay_progress_fill_=lv_obj_create(alarm_overlay_)',self.cpp)
+        self.assertIn('lv_obj_set_pos(overlay_progress_fill_,progress_x,progress_y)',self.cpp)
+        self.assertIn('lv_obj_set_style_pad_all(overlay_progress_fill_,0,0)',self.cpp)
+        self.assertIn('VolumeRamp::UPDATE_INTERVAL_MS',self.cpp)
+        self.assertIn('VolumeRamp::seconds_remaining(elapsed_ms)',self.cpp)
+        self.assertNotIn('VolumeRamp::STEP_MS', (ROOT/'components/alarmclock/volume_ramp.h').read_text())
 
     def test_audio_ramp_runtime(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
@@ -99,7 +124,7 @@ class PackageTest(unittest.TestCase):
 
     def test_audio_mock_runtime(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
-        for name in ('test_audio_runtime','test_cold_start','test_first_scheduled_alarm','test_millis_rollover'):
+        for name in ('test_audio_runtime','test_cold_start','test_first_scheduled_alarm','test_millis_rollover','test_snooze_suppression'):
             source=ROOT/f'tests/{name}.cpp'
             executable=ROOT/f'tests/_{name}'
             try:
@@ -121,9 +146,10 @@ class PackageTest(unittest.TestCase):
 
     def test_home_assistant_time_date_service_contract(self):
         js=(ROOT/'ha_card/tessera-alarmclock-card.js').read_text()
-        self.assertIn("_service('time','set_value'",js)
-        self.assertIn("_service('date','set_value'",js)
-        self.assertNotIn("_service('datetime','set_value'",js)
+        self.assertNotIn("_service('time','set_value'",js)
+        self.assertNotIn("_service('date','set_value'",js)
+        self.assertIn("this._hass.callService('switch'",js)
+        self.assertIn("this._hass.callService('button'",js)
 
     def test_graphic_edit_and_modal_alarm(self):
         c=self.cpp
@@ -147,8 +173,7 @@ class PackageTest(unittest.TestCase):
         # A timeout must silence audio without auto-acknowledging the alarm.
         self.assertNotRegex(c,r'\(s\.test\?15000u:300000u\)\)\s*stop_alarm')
         js=(ROOT/'ha_card/tessera-alarmclock-card.js').read_text()
-        for fragment in ('_editor(){', 'class="edit-hero"', 'class="edit-grid"',
-                         'data-action="save-edit"', "this._mode='edit'", "action==='save-edit'"):
+        for fragment in ('data-action="mute"', 'data-action="stop"', 'AlarmClock Nächster Wecker'):
             self.assertIn(fragment,js)
 
     def test_display_grid_contract(self):
@@ -194,7 +219,7 @@ class PackageTest(unittest.TestCase):
         self.assertIn('class TesseraAlarmClockCard',js)
         self.assertIn("customElements.define('tessera-alarmclock-card'",js)
         self.assertIn("this._hass.callService",js)
-        self.assertIn("this._nextDue",js)
+        self.assertIn("AlarmClock Nächster Wecker",js)
         self.assertTrue((ROOT/'ha_card/LOVELACE_KARTE.yaml').exists())
 
 if __name__=='__main__': unittest.main()

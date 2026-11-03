@@ -37,6 +37,12 @@ class AlarmClock final : public Component, public tessera::Plugin {
   void set_days(int i, text::Text *p) { a_[i].days = p; }
   void set_name(int i, text::Text *p) { a_[i].name = p; }
   void set_occupied_sensor(text_sensor::TextSensor *p) { occupied_sensor_ = p; }
+  void set_suppress_switch(switch_::Switch *p) { suppression_switch_ = p; }
+  void set_next_status_sensor(text_sensor::TextSensor *p) { next_status_sensor_ = p; }
+  void set_suppressed(bool on);
+  bool suppressed() const { return suppression_switch_ && suppression_switch_->state; }
+  bool snoozing(int i) const;
+  int snooze_remaining_seconds(int i) const;
 
   int hour(int i) const;
   int minute(int i) const;
@@ -104,6 +110,7 @@ class AlarmClock final : public Component, public tessera::Plugin {
   static void on_overlay_stop_(lv_event_t *event);
   static void on_overlay_snooze_(lv_event_t *event);
   void publish_occupied_();
+  void publish_next_status_();
   void play_current_(uint32_t now_ms);
   void reset_audio_start_();
   void refresh_audio_owner_(uint32_t now_ms);
@@ -111,6 +118,9 @@ class AlarmClock final : public Component, public tessera::Plugin {
   rtttl::Rtttl *player_{nullptr};
   speaker::Speaker *speaker_{nullptr};
   text_sensor::TextSensor *occupied_sensor_{nullptr};
+  text_sensor::TextSensor *next_status_sensor_{nullptr};
+  switch_::Switch *suppression_switch_{nullptr};
+  std::string last_next_status_{};
   ESPPreferenceObject occupied_preference_{};
   uint8_t occupied_mask_{0};
   uint8_t last_published_mask_{255};
@@ -119,6 +129,8 @@ class AlarmClock final : public Component, public tessera::Plugin {
   uint32_t last_song_ms_{0};
   uint32_t last_audio_attempt_ms_{0};
   int applied_volume_percent_{-1};
+  uint32_t last_volume_update_ms_{0};
+  bool volume_update_sent_{false};
   uint8_t audio_start_retries_{0};
   bool audio_stream_was_running_{false};
   bool audio_stream_has_started_{false};

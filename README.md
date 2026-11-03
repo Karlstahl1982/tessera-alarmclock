@@ -1,37 +1,40 @@
-# Tessera AlarmClock v0.3.3 (Beta)
+# Tessera AlarmClock v0.3.4 (Beta)
 
-Eigenständiges Wecker-Plugin für das Guition ESP32-4848S040 mit Tessera und Home Assistant. Komplettpaket für GitHub, **kein einzelner Firmware-Binärdownload**.
+Lokaler Wecker für das **Guition ESP32-4848S040** mit Tessera. Der ESP32 speichert und verwaltet bis zu fünf Wecker. Home Assistant dient ab dieser Version nur noch der zentralen Statusanzeige und Unterdrückung.
 
-## Neu in Version 0.3.3
+## Was ist neu?
 
-**Bugfix für den allerersten planmäßigen Alarm:** Bisher konnte bereits eine Millisekunde Unterschied zwischen dem vom Framework erfassten Tick und dem Alarm-Startwert dazu führen, dass der Alarm unmittelbar als „Alarmton beendet“ markiert wurde. Jetzt verwendet die gesamte Intervallprüfung einen konsistenten Zeitstempel und eine robuste Differenzberechnung.
-
-Der seit v0.3.2 vorhandene Audiostart mit begrenzten Retries und die 60-Sekunden-Lautstärkerampe bleiben unverändert. Bei eingestellten 60 % steigt die Software-Anzeige von 30 % in zehn Stufen auf 60 %. Die Prozentwerte sind Sollwerte, keine gemessenen dB.
+1. **Lautstärke:** Der 60-Sekunden-Anstieg wird statt in 6-Sekunden-Sprüngen mit kontinuierlich berechnetem Gain und 1-Sekunden-Updates ausgegeben. Die Alarmanzeige zeigt den aktuellen Software-Pegel in %, das Ziel in % und einen Countdown bis zum Zielpegel.
+2. **Fortschrittsbalken:** Gefüllter Balken und Hintergrund liegen jetzt als eigene, explizit platzierte LVGL-Rechtecke übereinander. Damit wird die vorherige mögliche Abschneidung durch den Container vermieden.
+3. **Schlummern:** Ein schlummernder Wecker bleibt unter „Meine Wecker“ mit `Zz` und Restzeit sichtbar, auch wenn sein einmaliger Termin bereits automatisch deaktiviert wurde. Die Hauptkachel zeigt die verbleibende Schlummerzeit.
+4. **Home Assistant aufgeräumt:** Nur die drei zentralen Entitäten **AlarmClock Nächster Wecker**, **AlarmClock Wecker unterdrücken** und **AlarmClock Alarm stoppen** werden veröffentlicht. Die Konfiguration der fünf Wecker findet ausschließlich am Display statt. Die eigene HA-Karte zeigt nur diese zentrale Bedienung.
 
 ## Voraussetzungen
 
-- Guition ESP32-4848S040 mit aktivierter Audiobrücke R21/R22/R23 und angeschlossenem Lautsprecher.
-- Tessera mit ESPHome 2026.9.0 und bereits funktionierendem Audio-Override.
-- Lokale Tessera-YAML muss unverändert `guition_tone` (RTTTL) **und** `guition_speaker` (I²S Speaker) bereitstellen. Neu ist, dass das Plugin beide referenziert.
-- Funktionierende Netzwerkverbindung für Firmware-Erstellung/OTA.
+- Tessera/ESPHome (getesteter Projektstand: ESPHome 2026.9.0 und Tessera Screens v0.4.96).
+- Funktionierende lokale Audio-YAML mit `guition_tone` (RTTTL) und `guition_speaker` (I²S); die Audio-Brücken R21–R23 müssen richtig bestückt sein.
+- Erfolgreicher Stand v0.3.3 als Rückfalloption empfohlen.
 
-## Installation
+## Installation (sequenziell)
 
-1. Dieses Archiv vollständig entpacken.
-2. Alle Dateien und Unterordner **direkt** in das Stammverzeichnis von `https://github.com/Karlstahl1982/tessera-alarmclock` übernehmen; vorhandene Dateien ersetzen. Auf `main` committen.
-3. In Tessera „Plugins → Mit einem Link hinzufügen → Branch testen“ öffnen; Repository-Link und Branch `main` verwenden. Neue Version **0.3.3** und neuen Commit kontrollieren.
-4. **Zuerst nur ESPHome-Firmware kompilieren.** Wenn der Build erfolgreich ist, auf das Display „Hilde“ übertragen.
-5. Vor dem Toncheck einen moderaten Zielwert (z. B. 40 %) wählen. Testalarm starten und die ersten Sekunden prüfen. Der Test läuft **75 Sekunden**, kann aber jederzeit mit „Stoppen“ beendet werden.
-6. Prüfen, dass „Nächste Erhöhung in 6 s“ herunterzählt, die Prozentzahl in 6-Sekunden-Schritten ansteigt und die Tonlautstärke tatsächlich hörbar zunimmt.
-7. Für den abschließenden Alltagstest einen einmaligen Wecker für die nächsten Minuten anlegen. **Bis zu diesem Test nicht als alleinigen Wecker verlassen.**
+1. ZIP vollständig entpacken und **den Inhalt**, nicht den übergeordneten Ordner, in den Stamm von `https://github.com/Karlstahl1982/tessera-alarmclock` hochladen. Die Dateien `plugin.yaml`, `tessera-plugin.yaml`, `components/…` müssen direkt im Repository liegen.
+2. Auf `main` committen. In Tessera über **Plugins → Mit Link hinzufügen → Branch testen**, Repository und Branch `main`, die neue Version **0.3.4** mit dem neuen Commit auswählen.
+3. **Zuerst nur Firmware erstellen.** Bei fehlerfreiem ESPHome-Build auf das Display übertragen. Die vorhandenen Wecker sollen aufgrund der unveränderten ESPHome-IDs erhalten bleiben; vor dem Flashen die fünf Zeiten/Einstellungen notieren.
+4. AlarmClock am Display öffnen. Testalarm starten und prüfen: Balken wächst über 60 Sekunden, aktuelle Lautstärke steigt bis zum Ziel, Countdown zählt herunter. Den Testalarm per Stoppen quittieren.
+5. Einen einmaligen Wecker zum Testen anlegen und schlummern lassen. Erwartung: Wecker bleibt in „Meine Wecker“ sichtbar, mit `Zz` und herunterzählender Restzeit, und erscheint weiterhin als nächster Alarm auf der Hauptkachel.
+6. Home-Assistant-Karte aktualisieren: `ha_card/tessera-alarmclock-card.js` nach `/homeassistant/www/tessera-alarmclock-card.js` kopieren und überschreiben. In **Einstellungen → Dashboards → Ressourcen** die URL auf `/local/tessera-alarmclock-card.js?v=0.3.4` ändern und Browser mit `Strg+F5` neu laden.
+7. Zentralen Schalter „Wecker unterdrücken“ kurz testen und danach **wieder ausschalten**. Ein aktiver Testalarm lässt sich mit dem Button „Alarm stoppen“ beenden.
 
-## Unverändert
+## Bedeutung der Unterdrückung
 
-Fünf gespeicherte Wecker, grafische Kacheln und Drehräder, Home-Assistant-Karte, Wiederholungen, Stoppen/Schlummern und blockierende Alarmansicht. Die Dateien unter `ha_card/` ändern sich gegenüber v0.3.1 nicht; **keine erneute HA-Ressourcenregistrierung** nötig.
+**AN:** Ein bereits klingelnder oder schlummernder Alarm wird beendet. Neue fällige Alarme werden übersprungen, nicht nur stumm abgespielt. Auch einmalige Wecker gelten beim Auslösen als erledigt. Es gibt **kein Nachholen**, wenn die Unterdrückung anschließend ausgeschaltet wird.
 
-## Einschränkungen
+**AUS:** Wieder regulärer Weckbetrieb. Nach einem Neustart steht die globale Unterdrückung sicherheitshalber auf **AUS**.
 
-- Kein echter ESPHome-/ESP-IDF-Build in dieser Umgebung; automatisierte Tests nutzen nachgebildete Schnittstellen.
-- Hardwarebedingte Ausfälle (Stecker, Verstärker, falsche GPIO-Brücken) werden durch Software-Retries nicht beseitigt.
-- Kein RTC-Modul; nach vollständigem Neustart ohne Zeitquelle ist die Uhrzeit nicht zuverlässig.
+## Wichtige Hinweise
 
+- Die 5 Einzel-Wecker-Entitäten und ihre Einstellungen sind ab sofort `internal: true`. Sie werden nicht mehr über die ESPHome-API für Home Assistant angeboten, bleiben aber als lokale Komponenten erhalten. **Bereits registrierte Entitäten können in Home Assistant als „nicht verfügbar“ verbleiben**; deren Registry-Einträge und alte Dashboard-Kacheln gegebenenfalls manuell bereinigen.
+- Eine ältere HA-Karte, die Wecker direkt über HA-Entitäten bearbeitet, funktioniert mit dieser Version nicht mehr; sie muss aktualisiert werden.
+- Die % sind digitale Software-Sollwerte, keine gemessenen Schalldruckpegel.
+- Keine RTC-Hardware vorhanden. Nach vollständigem Stromverlust ohne neue Zeitquelle ist eine korrekte Uhrzeit nicht garantiert.
+- **Reale ESPHome-Kompilierung, OTA-Übertragung und akustische Prüfung stehen noch aus.** Automatisierte Mock-Tests ersetzen diese nicht. Bis zum erfolgreichen Praxistest bitte einen zweiten Wecker zur Absicherung verwenden.

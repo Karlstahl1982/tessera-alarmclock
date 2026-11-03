@@ -77,7 +77,10 @@
     "volume_max_reached": "Target volume reached",
     "audio_ended": "Alarm sound ended",
     "audio_starting": "Starting audio ...",
-    "audio_failed": "Audio failed to start!"
+    "audio_failed": "Audio failed to start!",
+    "snoozing": "Snoozing",
+    "suppressed": "Alarms suppressed",
+    "volume_target_in": "Target volume in"
   },
   "app": {
     "name": "AlarmClock",

@@ -22,6 +22,8 @@ FIELDS = {
 }
 _schema = {cv.GenerateID(): cv.declare_id(AlarmClock), cv.Required(CONF_TONE): cv.use_id(rtttl.Rtttl), cv.Required(CONF_SPEAKER): cv.use_id(speaker.Speaker)}
 _schema[cv.Required("occupied_sensor")] = cv.use_id(text_sensor.TextSensor)
+_schema[cv.Required("suppress_switch")] = cv.use_id(switch.Switch)
+_schema[cv.Required("next_status_sensor")] = cv.use_id(text_sensor.TextSensor)
 for index in range(1, 6):
     for field, typ in FIELDS.items():
         _schema[cv.Required(f"{field}_{index}")] = cv.use_id(typ)
@@ -34,6 +36,8 @@ async def to_code(config):
     cg.add(var.set_tone_player(await cg.get_variable(config[CONF_TONE])))
     cg.add(var.set_speaker(await cg.get_variable(config[CONF_SPEAKER])))
     cg.add(var.set_occupied_sensor(await cg.get_variable(config["occupied_sensor"])))
+    cg.add(var.set_suppress_switch(await cg.get_variable(config["suppress_switch"])))
+    cg.add(var.set_next_status_sensor(await cg.get_variable(config["next_status_sensor"])))
     for i in range(1, 6):
         for field in FIELDS:
             cg.add(getattr(var, f"set_{field}")(i - 1, await cg.get_variable(config[f"{field}_{i}"])))

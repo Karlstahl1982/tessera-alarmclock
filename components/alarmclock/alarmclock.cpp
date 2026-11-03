@@ -85,9 +85,17 @@ class NextAlarmTile final : public tessera::Tile {
     place_label(clock_, 0, std::max(ui::px(25), (h_ - big_h) / 2 - ui::px(10)), w_, big_h, "--:--");
     const int n = p_->next_alarm();
     char value[72];
-    if (p_->any_ringing()) {
+    if (p_->suppressed()) {
+      ui::set_text(clock_, "--:--");
+      std::snprintf(value,sizeof(value),"%s",p_->text("suppressed"));
+    } else if (p_->any_ringing()) {
       ui::set_text(clock_, p_->text("ringing"));
       std::snprintf(value, sizeof(value), "%s", p_->text("ringing_hint"));
+    } else if (n >= 0 && p_->snoozing(n)) {
+      const int rem=p_->snooze_remaining_seconds(n);
+      char time[12];std::snprintf(time,sizeof(time),"%02d:%02d",rem/60,rem%60);
+      ui::set_text(clock_,time);
+      std::snprintf(value,sizeof(value),"%s · %s",p_->alarm_name(n),p_->text("snoozing"));
     } else if (n < 0) {
       std::snprintf(value, sizeof(value), "%s", p_->text("no_alarms"));
     } else {
@@ -178,9 +186,10 @@ class AlarmOverview final : public tessera::Card {
             if (index<listed_) {
               const int slot=visible_[index];
               // Top-right status pill is an explicit quick toggle.
-              if (x>=card_x+card_w-ui::px(52) && y<card_y+ui::px(42))
-                p_->set_active(slot,!p_->enabled(slot));
-              else begin_edit_(slot);
+              if (x>=card_x+card_w-ui::px(52) && y<card_y+ui::px(42)) {
+                if (p_->snoozing(slot)) p_->stop_alarm(slot); // explicit snooze cancel
+                else p_->set_active(slot,!p_->enabled(slot));
+              } else begin_edit_(slot);
             } else if (index==listed_ && listed_<AlarmClock::COUNT) begin_new_();
           }
         }
@@ -579,13 +588,18 @@ class AlarmOverview final : public tessera::Card {
           paint_visual_(card,x,y,cw,ch,p_->text("grid_add"),"","","",true,true,false);
         } else {
           const int slot=visible_[n];
-          const bool active=p_->enabled(slot);
+          const bool snoozing=p_->snoozing(slot);
+          const bool active=p_->enabled(slot) || snoozing;
           char t[10];
           std::snprintf(t,sizeof(t),"%02d:%02d",p_->hour(slot),p_->minute(slot));
           const char *freq=p_->mode(slot)==2?p_->text("grid_weekly"):
                             p_->mode(slot)==1?p_->text("grid_once_date"):p_->text("grid_once");
-          paint_visual_(card,x,y,cw,ch,p_->alarm_name(slot),t,freq,
-                        active?p_->text("grid_on"):p_->text("grid_off"),active);
+          char snooze_info[50];
+          const int remain=p_->snooze_remaining_seconds(slot);
+          std::snprintf(snooze_info,sizeof(snooze_info),"%s %02d:%02d",p_->text("snoozing"),remain/60,remain%60);
+          paint_visual_(card,x,y,cw,ch,p_->alarm_name(slot),t,
+                        snoozing?snooze_info:freq,
+                        snoozing?"Zz":active?p_->text("grid_on"):p_->text("grid_off"),active);
         }
       }
       return;
@@ -796,11 +810,14 @@ void AlarmClock::update_alarm_overlay_() {
     lv_obj_set_style_radius(overlay_progress_bg_,5,0);
     lv_obj_remove_flag(overlay_progress_bg_,LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_remove_flag(overlay_progress_bg_,LV_OBJ_FLAG_CLICKABLE);
-    overlay_progress_fill_=lv_obj_create(overlay_progress_bg_);
+    lv_obj_set_style_pad_all(overlay_progress_bg_,0,0);
+    // Sibling overlay rectangles avoid LVGL content-padding/clipping interactions.
+    overlay_progress_fill_=lv_obj_create(alarm_overlay_);
     lv_obj_set_style_bg_color(overlay_progress_fill_,lv_color_hex(0x32B9D6),0);
     lv_obj_set_style_bg_opa(overlay_progress_fill_,LV_OPA_COVER,0);
     lv_obj_set_style_border_width(overlay_progress_fill_,0,0);
     lv_obj_set_style_radius(overlay_progress_fill_,5,0);
+    lv_obj_set_style_pad_all(overlay_progress_fill_,0,0);
     lv_obj_remove_flag(overlay_progress_fill_,LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_remove_flag(overlay_progress_fill_,LV_OBJ_FLAG_CLICKABLE);
     const int margin=std::max(12,overlay_width_/22);
@@ -853,15 +870,15 @@ void AlarmClock::update_alarm_overlay_() {
   const int progress_width=overlay_width_-2*progress_x;
   const int progress_y=overlay_height_*63/100;
   lv_obj_set_pos(overlay_progress_bg_,progress_x,progress_y);
-  lv_obj_set_size(overlay_progress_bg_,progress_width,11);
-  lv_obj_set_pos(overlay_progress_fill_,0,0);
-  const int fill_width=std::max(4,static_cast<int>(static_cast<uint64_t>(progress_width)*
+  lv_obj_set_size(overlay_progress_bg_,progress_width,15);
+  lv_obj_set_pos(overlay_progress_fill_,progress_x,progress_y);
+  const int fill_width=std::max(1,static_cast<int>(static_cast<uint64_t>(progress_width)*
       std::min<uint32_t>(elapsed_ms,VolumeRamp::DURATION_MS)/VolumeRamp::DURATION_MS));
-  lv_obj_set_size(overlay_progress_fill_,fill_width,11);
+  lv_obj_set_size(overlay_progress_fill_,fill_width,15);
   if (a_[active].audio_expired) {
     std::snprintf(value,sizeof(value),"%s",text("audio_ended"));
   } else if (elapsed_ms < VolumeRamp::DURATION_MS) {
-    std::snprintf(value,sizeof(value),"%s: %d s",text("volume_next_in"),VolumeRamp::seconds_to_next(elapsed_ms));
+    std::snprintf(value,sizeof(value),"%s: %d s",text("volume_target_in"),VolumeRamp::seconds_remaining(elapsed_ms));
   } else {
     std::snprintf(value,sizeof(value),"%s",text("volume_max_reached"));
   }
@@ -1006,6 +1023,35 @@ void AlarmClock::set_active(int i,bool on) {
   tessera::refresh();
 }
 bool AlarmClock::ringing(int i) const { return a_[i].active; }
+bool AlarmClock::snoozing(int i) const { return i>=0 && i<COUNT && a_[i].snooze_pending; }
+int AlarmClock::snooze_remaining_seconds(int i) const {
+  if (!snoozing(i)) return 0;
+  const int32_t remaining=static_cast<int32_t>(a_[i].snooze_due_ms-millis());
+  if (remaining<=0) return 0;
+  return (remaining+999)/1000;
+}
+void AlarmClock::set_suppressed(bool on) {
+  if (on) stop_all(); // explicit central action: silence current and cancel snoozes
+  publish_next_status_();
+  tessera::refresh();
+}
+void AlarmClock::publish_next_status_() {
+  if (!next_status_sensor_) return;
+  char msg[100];
+  if (suppressed()) std::snprintf(msg,sizeof(msg),"Unterdrückt");
+  else if (any_ringing()) std::snprintf(msg,sizeof(msg),"Klingelt: %s",alarm_name(first_ringing()));
+  else {
+    const int n=next_alarm();
+    if (n<0) std::snprintf(msg,sizeof(msg),"Kein Wecker aktiv");
+    else if (snoozing(n)) {
+      const int sec=snooze_remaining_seconds(n);
+      std::snprintf(msg,sizeof(msg),"%s · Schlummert %02d:%02d",alarm_name(n),sec/60,sec%60);
+    } else std::snprintf(msg,sizeof(msg),"%s · %02d:%02d",alarm_name(n),hour(n),minute(n));
+  }
+  if (last_next_status_==msg) return;
+  last_next_status_=msg;
+  next_status_sensor_->publish_state(msg);
+}
 bool AlarmClock::any_ringing() const { for (auto &s:a_) if(s.active) return true; return false; }
 int AlarmClock::first_ringing() const {
   if (audio_owner_>=0 && audio_owner_<COUNT && a_[audio_owner_].active) return audio_owner_;
@@ -1013,6 +1059,15 @@ int AlarmClock::first_ringing() const {
   return -1;
 }
 int AlarmClock::next_alarm() const {
+  // Snooze belongs to the active alarm lifecycle, even if a one-shot alarm
+  // switched its enabled flag off after the first ring.
+  int snooze_index=-1;
+  int snooze_left=1000000;
+  for(int i=0;i<COUNT;++i) if(snoozing(i)) {
+    const int remaining=snooze_remaining_seconds(i);
+    if(remaining<snooze_left) { snooze_left=remaining; snooze_index=i; }
+  }
+  if(snooze_index>=0) return snooze_index;
   const uint32_t epoch=tessera::epoch();
   if (!epoch) { for (int i=0;i<COUNT;++i) if(enabled(i)) return i; return -1; }
   const auto now=tessera::local_time(epoch);
@@ -1075,6 +1130,8 @@ void AlarmClock::reset_audio_start_() {
   last_song_ms_=0;
   last_audio_attempt_ms_=0;
   applied_volume_percent_=-1;
+  last_volume_update_ms_=0;
+  volume_update_sent_=false;
   audio_start_retries_=0;
   audio_stream_was_running_=false;
   audio_stream_has_started_=false;
@@ -1108,9 +1165,13 @@ void AlarmClock::play_current_(uint32_t now_ms) {
     last_song_ms_=now_ms;
     last_audio_attempt_ms_=now_ms;
   }
-  if (speaker_ && running && (!audio_stream_was_running_ || current_pct!=applied_volume_percent_)) {
+  if (speaker_ && running && (!volume_update_sent_ ||
+      elapsed_since(now_ms,last_volume_update_ms_)>=VolumeRamp::UPDATE_INTERVAL_MS)) {
+    // Smooth one-second gain interpolation instead of ten audible 6s jumps.
     speaker_->set_volume(gain);
     applied_volume_percent_=current_pct;
+    last_volume_update_ms_=now_ms;
+    volume_update_sent_=true;
   }
   audio_stream_was_running_=running;
   if (running) audio_stream_has_started_=true;
@@ -1169,7 +1230,7 @@ void AlarmClock::on_interval(uint32_t /* tick_ms */) {
             a_[i].preference.save(&key);
             if(mode(i)!=2) set_active(i,false);
             a_[i].snoozes_used=0;
-            start_alarm_(i,false,now_ms);
+            if (!suppressed()) start_alarm_(i,false,now_ms);
             break;
           }
         }
@@ -1190,6 +1251,7 @@ void AlarmClock::on_interval(uint32_t /* tick_ms */) {
   if(audio_owner_<0 || !a_[audio_owner_].active || a_[audio_owner_].audio_expired)
     refresh_audio_owner_(now_ms);
   if(audio_owner_>=0) play_current_(now_ms);
+  publish_next_status_();
   if (any_ringing() && (alarm_overlay_==nullptr ||
        static_cast<uint32_t>(now_ms-last_overlay_refresh_ms_)>=400u)) {
     update_alarm_overlay_();

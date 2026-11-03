@@ -77,7 +77,10 @@
     "volume_max_reached": "Ziellautstärke erreicht",
     "audio_ended": "Alarmton beendet",
     "audio_starting": "Audio wird gestartet ...",
-    "audio_failed": "Audio startet nicht!"
+    "audio_failed": "Audio startet nicht!",
+    "snoozing": "Schlummert",
+    "suppressed": "Wecker unterdrückt",
+    "volume_target_in": "Zielpegel in"
   },
   "app": {
     "name": "AlarmClock",
