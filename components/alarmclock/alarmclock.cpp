@@ -757,6 +757,7 @@ void AlarmClock::update_alarm_overlay_() {
       lv_obj_delete(alarm_overlay_);
       alarm_overlay_=nullptr;
       overlay_name_=overlay_clock_=overlay_state_=overlay_stop_=overlay_snooze_=nullptr;
+      overlay_volume_=overlay_countdown_=overlay_progress_bg_=overlay_progress_fill_=nullptr;
     }
     return;
   }
@@ -778,6 +779,22 @@ void AlarmClock::update_alarm_overlay_() {
     overlay_name_=ui::label(alarm_overlay_,Font::TITLE,theme::INK);
     overlay_clock_=ui::label(alarm_overlay_,Font::VALUE,theme::INK);
     overlay_state_=ui::label(alarm_overlay_,Font::BODY_LARGE,theme::INK);
+    overlay_volume_=ui::label(alarm_overlay_,Font::BODY_LARGE,theme::INK);
+    overlay_countdown_=ui::label(alarm_overlay_,Font::BODY,theme::MUTED);
+    overlay_progress_bg_=lv_obj_create(alarm_overlay_);
+    lv_obj_set_style_bg_color(overlay_progress_bg_,lv_color_hex(0x2D4054),0);
+    lv_obj_set_style_bg_opa(overlay_progress_bg_,LV_OPA_COVER,0);
+    lv_obj_set_style_border_width(overlay_progress_bg_,0,0);
+    lv_obj_set_style_radius(overlay_progress_bg_,5,0);
+    lv_obj_remove_flag(overlay_progress_bg_,LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_remove_flag(overlay_progress_bg_,LV_OBJ_FLAG_CLICKABLE);
+    overlay_progress_fill_=lv_obj_create(overlay_progress_bg_);
+    lv_obj_set_style_bg_color(overlay_progress_fill_,lv_color_hex(0x32B9D6),0);
+    lv_obj_set_style_bg_opa(overlay_progress_fill_,LV_OPA_COVER,0);
+    lv_obj_set_style_border_width(overlay_progress_fill_,0,0);
+    lv_obj_set_style_radius(overlay_progress_fill_,5,0);
+    lv_obj_remove_flag(overlay_progress_fill_,LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_remove_flag(overlay_progress_fill_,LV_OBJ_FLAG_CLICKABLE);
     const int margin=std::max(12,overlay_width_/22);
     const int gap=std::max(10,overlay_width_/35);
     const int button_width=(overlay_width_-2*margin-gap)/2;
@@ -802,7 +819,7 @@ void AlarmClock::update_alarm_overlay_() {
     lv_obj_t *stop_btn=add_button(margin+button_width+gap,lv_color_hex(0xD14D56),on_overlay_stop_);
     overlay_snooze_=ui::label(snooze_btn,Font::BODY_LARGE,theme::INK);
     overlay_stop_=ui::label(stop_btn,Font::BODY_LARGE,theme::INK);
-    for (auto *o:{overlay_name_,overlay_clock_,overlay_state_,overlay_snooze_,overlay_stop_})
+    for (auto *o:{overlay_name_,overlay_clock_,overlay_state_,overlay_volume_,overlay_snooze_,overlay_stop_})
       lv_obj_set_style_text_color(o,lv_color_hex(0xFFFFFF),0);
     place_label(overlay_snooze_,0,0,button_width,button_height,text("snooze"));
     place_label(overlay_stop_,0,0,button_width,button_height,text("stop"));
@@ -812,9 +829,35 @@ void AlarmClock::update_alarm_overlay_() {
   place_label(overlay_name_,12,overlay_height_*16/100,overlay_width_-24,45,value);
   std::snprintf(value,sizeof(value),"%02d:%02d",hour(active),minute(active));
   place_label(overlay_clock_,8,overlay_height_*29/100,overlay_width_-16,overlay_height_*21/100,value);
-  std::snprintf(value,sizeof(value),"%s %d/3%s",text("snooze"),a_[active].snoozes_used,
-                a_[active].audio_expired?"  |  Ton beendet":"");
-  place_label(overlay_state_,8,overlay_height_*55/100,overlay_width_-16,48,value);
+  if (speaker_ && !audio_stream_has_started_ && !a_[active].audio_expired) {
+    const uint32_t start_wait=static_cast<uint32_t>(millis()-a_[active].started_ms);
+    std::snprintf(value,sizeof(value),"%s",text(start_wait>=12000u?"audio_failed":"audio_starting"));
+  } else {
+    std::snprintf(value,sizeof(value),"%s %d/3",text("snooze"),a_[active].snoozes_used);
+  }
+  place_label(overlay_state_,8,overlay_height_*47/100,overlay_width_-16,34,value);
+  const uint32_t elapsed_ms=static_cast<uint32_t>(millis()-a_[active].started_ms);
+  const int target_percent=volume(active);
+  const int actual_percent=VolumeRamp::current_percent(target_percent,elapsed_ms);
+  std::snprintf(value,sizeof(value),"%s: %d%%  /  %d%%",text("volume"),actual_percent,target_percent);
+  place_label(overlay_volume_,8,overlay_height_*55/100,overlay_width_-16,37,value);
+  const int progress_x=overlay_width_/10;
+  const int progress_width=overlay_width_-2*progress_x;
+  const int progress_y=overlay_height_*63/100;
+  lv_obj_set_pos(overlay_progress_bg_,progress_x,progress_y);
+  lv_obj_set_size(overlay_progress_bg_,progress_width,11);
+  lv_obj_set_pos(overlay_progress_fill_,0,0);
+  const int fill_width=std::max(4,static_cast<int>(static_cast<uint64_t>(progress_width)*
+      std::min<uint32_t>(elapsed_ms,VolumeRamp::DURATION_MS)/VolumeRamp::DURATION_MS));
+  lv_obj_set_size(overlay_progress_fill_,fill_width,11);
+  if (a_[active].audio_expired) {
+    std::snprintf(value,sizeof(value),"%s",text("audio_ended"));
+  } else if (elapsed_ms < VolumeRamp::DURATION_MS) {
+    std::snprintf(value,sizeof(value),"%s: %d s",text("volume_next_in"),VolumeRamp::seconds_to_next(elapsed_ms));
+  } else {
+    std::snprintf(value,sizeof(value),"%s",text("volume_max_reached"));
+  }
+  place_label(overlay_countdown_,8,overlay_height_*66/100,overlay_width_-16,30,value);
   const bool can_snooze=!a_[active].test && a_[active].snoozes_used<3;
   lv_obj_t *button=lv_obj_get_parent(overlay_snooze_);
   if (button) {
@@ -986,12 +1029,19 @@ int AlarmClock::next_alarm() const {
 void AlarmClock::start_alarm_(int i,bool test) {
   Slot &s=a_[i];
   if (s.active) return;
-  s.active=true; s.test=test; s.started_ms=millis(); s.snooze_pending=false; s.audio_expired=false;
-  if (!any_ringing() || audio_owner_<0 || !a_[audio_owner_].active) audio_owner_=i;
+  // Check BEFORE setting active: this was previously always true for the first alarm.
+  const bool already_ringing=any_ringing();
+  const uint32_t now_ms=millis();
+  s.active=true; s.test=test; s.started_ms=now_ms; s.snooze_pending=false; s.audio_expired=false;
+  if (!already_ringing || audio_owner_<0 || !a_[audio_owner_].active) {
+    audio_owner_=i;
+    // A preview may still be playing. RTTTL will otherwise refuse a new song.
+    if(player_ && player_->is_playing()) player_->stop();
+    reset_audio_start_();
+    play_current_(now_ms); // Start audio promptly, before drawing the overlay.
+  }
   tessera::wake(this);
   update_alarm_overlay_();
-  last_song_ms_=0;
-  play_current_(millis());
   tessera::refresh();
 }
 void AlarmClock::start_test() { a_[0].snoozes_used=0; start_alarm_(0,true); }
@@ -1002,7 +1052,7 @@ void AlarmClock::stop_alarm(int i) {
   update_alarm_overlay_();
   tessera::refresh();
 }
-void AlarmClock::stop_all() { for(int i=0;i<COUNT;++i) {a_[i].active=false; a_[i].snooze_pending=false; a_[i].snoozes_used=0;} audio_owner_=-1; if(player_) player_->stop(); update_alarm_overlay_(); tessera::refresh(); }
+void AlarmClock::stop_all() { for(int i=0;i<COUNT;++i) {a_[i].active=false; a_[i].snooze_pending=false; a_[i].snoozes_used=0;} audio_owner_=-1; if(player_) player_->stop(); reset_audio_start_(); update_alarm_overlay_(); tessera::refresh(); }
 void AlarmClock::snooze_alarm(int i) {
   if(i<0 || i>=COUNT || !a_[i].active) return;
   Slot &s=a_[i];
@@ -1013,6 +1063,14 @@ void AlarmClock::snooze_alarm(int i) {
   update_alarm_overlay_();
   tessera::refresh();
 }
+void AlarmClock::reset_audio_start_() {
+  last_song_ms_=0;
+  last_audio_attempt_ms_=0;
+  applied_volume_percent_=-1;
+  audio_start_retries_=0;
+  audio_stream_was_running_=false;
+  audio_stream_has_started_=false;
+}
 void AlarmClock::refresh_audio_owner_(uint32_t now_ms) {
   int next=-1;
   if (audio_owner_>=0 && audio_owner_<COUNT && a_[audio_owner_].active && !a_[audio_owner_].audio_expired)
@@ -1021,20 +1079,43 @@ void AlarmClock::refresh_audio_owner_(uint32_t now_ms) {
   if (next==audio_owner_) return;
   audio_owner_=next;
   if(player_) player_->stop();
-  last_song_ms_=0;
+  reset_audio_start_();
   if(next>=0) play_current_(now_ms);
 }
 void AlarmClock::play_current_(uint32_t now_ms) {
   if(!player_ || audio_owner_<0) return;
   const Slot &s=a_[audio_owner_];
   if (s.audio_expired) return;
-  // Safe cap: 100% in AlarmClock means 15% of ESPHome RTTTL's digital gain.
-  const float max_gain = 0.15f * volume(audio_owner_) / 100.0f;
-  const float ramp = std::min(1.0f, 0.10f+0.90f * static_cast<float>(now_ms-s.started_ms)/60000.0f);
-  player_->set_gain(max_gain*ramp);
-  if(!player_->is_playing() && (last_song_ms_==0 || static_cast<uint32_t>(now_ms-last_song_ms_)>=500u)) {
+  const uint32_t elapsed_ms=static_cast<uint32_t>(now_ms-s.started_ms);
+  const int current_pct=VolumeRamp::current_percent(volume(audio_owner_),elapsed_ms);
+  const float gain=VolumeRamp::digital_gain(volume(audio_owner_),elapsed_ms);
+  // RTTTL::set_gain() is not live while an I2S song plays: the speaker's volume
+  // is only set by RTTTL during INIT. Update the I2S speaker directly at each
+  // stage, so the displayed percentage corresponds to an applied gain change.
+  player_->set_gain(gain);
+  const bool running=speaker_ && speaker_->is_running();
+  if (!player_->is_playing() &&
+      (last_song_ms_==0 || static_cast<uint32_t>(now_ms-last_song_ms_)>=500u)) {
     player_->play(SONGS[tune(audio_owner_)]);
     last_song_ms_=now_ms;
+    last_audio_attempt_ms_=now_ms;
+  }
+  if (speaker_ && running && (!audio_stream_was_running_ || current_pct!=applied_volume_percent_)) {
+    speaker_->set_volume(gain);
+    applied_volume_percent_=current_pct;
+  }
+  audio_stream_was_running_=running;
+  if (running) audio_stream_has_started_=true;
+  // A cold speaker can remain in STARTING/INIT without producing output.
+  // Retry only if the speaker never became RUNNING; avoid interrupting songs.
+  if (speaker_ && !running && player_->is_playing() && audio_start_retries_<2 &&
+      static_cast<uint32_t>(now_ms-last_audio_attempt_ms_)>=4000u) {
+    ++audio_start_retries_;
+    player_->stop();
+    player_->set_gain(gain);
+    player_->play(SONGS[tune(audio_owner_)]);
+    last_song_ms_=now_ms;
+    last_audio_attempt_ms_=now_ms;
   }
 }
 bool AlarmClock::matches_(int i,uint32_t candidate_epoch,uint32_t &key) const {
@@ -1088,7 +1169,7 @@ void AlarmClock::on_interval(uint32_t now_ms) {
     // Audio ends after 5 minutes (15 seconds for a test), but the alarm stays
     // pending until a conscious Stop or Snooze action acknowledges it.
     if(s.active && !s.audio_expired &&
-       static_cast<uint32_t>(now_ms-s.started_ms)>=(s.test?15000u:300000u)) {
+       static_cast<uint32_t>(now_ms-s.started_ms)>=(s.test?75000u:300000u)) {
       s.audio_expired=true;
       refresh_audio_owner_(now_ms);
     }

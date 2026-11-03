@@ -1,13 +1,14 @@
 """Tessera AlarmClock: five autonomous alarms with ESPHome entities."""
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import datetime, number, rtttl, select, smart_display, switch, text, text_sensor
+from esphome.components import datetime, number, rtttl, select, smart_display, speaker, switch, text, text_sensor
 from esphome.const import CONF_ID
 
 DEPENDENCIES = ["smart_display"]
 AC_NS = cg.esphome_ns.namespace("alarmclock")
 AlarmClock = AC_NS.class_("AlarmClock", cg.Component)
 CONF_TONE = "tone"
+CONF_SPEAKER = "speaker"
 FIELDS = {
     "time": datetime.TimeEntity,
     "date": datetime.DateEntity,
@@ -19,7 +20,7 @@ FIELDS = {
     "days": text.Text,
     "name": text.Text,
 }
-_schema = {cv.GenerateID(): cv.declare_id(AlarmClock), cv.Required(CONF_TONE): cv.use_id(rtttl.Rtttl)}
+_schema = {cv.GenerateID(): cv.declare_id(AlarmClock), cv.Required(CONF_TONE): cv.use_id(rtttl.Rtttl), cv.Required(CONF_SPEAKER): cv.use_id(speaker.Speaker)}
 _schema[cv.Required("occupied_sensor")] = cv.use_id(text_sensor.TextSensor)
 for index in range(1, 6):
     for field, typ in FIELDS.items():
@@ -31,6 +32,7 @@ async def to_code(config):
     await cg.register_component(var, config)
     await smart_display.register_plugin(var, __file__)
     cg.add(var.set_tone_player(await cg.get_variable(config[CONF_TONE])))
+    cg.add(var.set_speaker(await cg.get_variable(config[CONF_SPEAKER])))
     cg.add(var.set_occupied_sensor(await cg.get_variable(config["occupied_sensor"])))
     for i in range(1, 6):
         for field in FIELDS:

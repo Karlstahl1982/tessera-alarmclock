@@ -11,6 +11,8 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include <string>
 #include "esphome/components/rtttl/rtttl.h"
+#include "esphome/components/speaker/speaker.h"
+#include "volume_ramp.h"
 #include "esphome/components/smart_display/plugin_api.h"
 
 namespace esphome::alarmclock {
@@ -24,6 +26,7 @@ class AlarmClock final : public Component, public tessera::Plugin {
   bool settings(tessera::SettingsPage &page) override;
 
   void set_tone_player(rtttl::Rtttl *p) { player_ = p; }
+  void set_speaker(speaker::Speaker *p) { speaker_ = p; }
   void set_time(int i, datetime::TimeEntity *p) { a_[i].time = p; }
   void set_date(int i, datetime::DateEntity *p) { a_[i].date = p; }
   void set_enabled(int i, switch_::Switch *p) { a_[i].enabled = p; }
@@ -102,9 +105,11 @@ class AlarmClock final : public Component, public tessera::Plugin {
   static void on_overlay_snooze_(lv_event_t *event);
   void publish_occupied_();
   void play_current_(uint32_t now_ms);
+  void reset_audio_start_();
   void refresh_audio_owner_(uint32_t now_ms);
   bool matches_(int i, uint32_t candidate_epoch, uint32_t &date_key) const;
   rtttl::Rtttl *player_{nullptr};
+  speaker::Speaker *speaker_{nullptr};
   text_sensor::TextSensor *occupied_sensor_{nullptr};
   ESPPreferenceObject occupied_preference_{};
   uint8_t occupied_mask_{0};
@@ -112,9 +117,16 @@ class AlarmClock final : public Component, public tessera::Plugin {
   bool migration_pending_{false};
   uint32_t seen_minute_{0};
   uint32_t last_song_ms_{0};
+  uint32_t last_audio_attempt_ms_{0};
+  int applied_volume_percent_{-1};
+  uint8_t audio_start_retries_{0};
+  bool audio_stream_was_running_{false};
+  bool audio_stream_has_started_{false};
   int audio_owner_{-1};
   lv_obj_t *alarm_overlay_{nullptr};
   lv_obj_t *overlay_name_{nullptr}, *overlay_clock_{nullptr}, *overlay_state_{nullptr};
+  lv_obj_t *overlay_volume_{nullptr}, *overlay_countdown_{nullptr};
+  lv_obj_t *overlay_progress_bg_{nullptr}, *overlay_progress_fill_{nullptr};
   lv_obj_t *overlay_stop_{nullptr}, *overlay_snooze_{nullptr};
   int overlay_width_{0},overlay_height_{0};
   uint32_t last_overlay_refresh_ms_{0};

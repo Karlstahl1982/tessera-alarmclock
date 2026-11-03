@@ -22,7 +22,7 @@
     "off": "Aus",
     "back": "Zurück",
     "stop": "Stoppen",
-    "test": "Testton 15 Sekunden",
+    "test": "Testton 75 Sekunden",
     "stop_all": "Alle Alarme stoppen",
     "mode_next": "Nächste Uhrzeit",
     "mode_date": "Einmalig am Datum",
@@ -72,7 +72,12 @@
     "tone_digital_hint": "Digital",
     "tone_sunrise_hint": "Sanfter Start",
     "tone_urgent_hint": "Schnell",
-    "grid_name": "Name"
+    "grid_name": "Name",
+    "volume_next_in": "Nächste Erhöhung in",
+    "volume_max_reached": "Ziellautstärke erreicht",
+    "audio_ended": "Alarmton beendet",
+    "audio_starting": "Audio wird gestartet ...",
+    "audio_failed": "Audio startet nicht!"
   },
   "app": {
     "name": "AlarmClock",

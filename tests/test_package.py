@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.3.1')
+        self.assertEqual(self.manifest['version'],'0.3.2')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -41,6 +41,7 @@ class PackageTest(unittest.TestCase):
     def test_restore_and_audio_preserved(self):
         p=self.package
         self.assertEqual(p['alarmclock']['tone'],'guition_tone')
+        self.assertEqual(p['alarmclock']['speaker'],'guition_speaker')
         self.assertEqual([v['initial_value'] for v in p['datetime'] if v['type']=='time'],
                          ['07:00:00','08:00:00','09:00:00','10:00:00','11:00:00'])
         self.assertTrue(all(v['restore_value'] for v in p['datetime']))
@@ -64,6 +65,45 @@ class PackageTest(unittest.TestCase):
                        'lv_roller_set_options(hour_', 'lv_roller_set_options(minute_',
                        'constexpr const char *SONGS[]'):
             self.assertIn(needle,self.cpp)
+
+
+    def test_audio_cold_start_and_live_volume(self):
+        c=self.cpp
+        for token in ('const bool already_ringing=any_ringing();',
+                      'play_current_(now_ms); // Start audio promptly',
+                      'speaker_->set_volume(gain);',
+                      'VolumeRamp::current_percent(', 'VolumeRamp::seconds_to_next(',
+                      'last_audio_attempt_ms_', 'audio_start_retries_<2',
+                      'overlay_countdown_', 'overlay_progress_fill_'):
+            self.assertIn(token,c)
+        self.assertNotIn('0.10f+0.90f',c)
+        self.assertNotIn('0.15f * volume(audio_owner_)',c)
+
+    def test_audio_ramp_runtime(self):
+        if not shutil.which('g++'): self.skipTest('g++ missing')
+        source=ROOT/'tests/test_audio_ramp.cpp'
+        executable=ROOT/'tests/_volume_ramp_test'
+        try:
+            subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror','-I'+str(ROOT/'components/alarmclock'),str(source),'-o',str(executable)],check=True,capture_output=True,text=True)
+            subprocess.run([str(executable)],check=True,capture_output=True,text=True)
+        finally:
+            if executable.exists(): executable.unlink()
+
+
+    def test_audio_mock_runtime(self):
+        if not shutil.which('g++'): self.skipTest('g++ missing')
+        for name in ('test_audio_runtime','test_cold_start'):
+            source=ROOT/f'tests/{name}.cpp'
+            executable=ROOT/f'tests/_{name}'
+            try:
+                subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror',
+                                '-I'+str(ROOT/'tests/cpp_mocks'),
+                                '-I'+str(ROOT/'components/alarmclock'),
+                                str(source),str(ROOT/'components/alarmclock/alarmclock.cpp'),
+                                '-o',str(executable)],check=True,capture_output=True,text=True)
+                subprocess.run([str(executable)],check=True,capture_output=True,text=True)
+            finally:
+                if executable.exists(): executable.unlink()
 
     def test_js_syntax(self):
         subprocess.run(['node','--check',str(ROOT/'ha_card/tessera-alarmclock-card.js')],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)

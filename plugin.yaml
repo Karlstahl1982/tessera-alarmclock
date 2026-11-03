@@ -474,6 +474,7 @@ button:
 alarmclock:
   id: alarm_clock
   tone: guition_tone
+  speaker: guition_speaker
   time_1: ac_time_1
   date_1: ac_date_1
   enabled_1: ac_enabled_1

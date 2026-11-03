@@ -45,7 +45,8 @@ inline void lv_roller_set_options(lv_obj_t*,const char*,int){}
 inline void lv_roller_set_visible_row_count(lv_obj_t*,int){}
 inline void lv_roller_set_selected(lv_obj_t*,int,int){}
 inline int lv_roller_get_selected(lv_obj_t*){return 0;}
-inline uint32_t millis(){return 42;}
+inline uint32_t mock_time_ms=42;
+inline uint32_t millis(){return mock_time_ms;}
 namespace theme { enum R {CARD,INK,ACCENT,ON_ACCENT,MUTED}; }
 namespace esphome {
 namespace setup_priority { static constexpr float DATA=10; }
@@ -64,7 +65,8 @@ namespace select {struct SelectCall{void set_option(const char*){};void perform(
 namespace text {struct TextCall {void set_value(const std::string&){};void perform(){}};struct Text {std::string state="Wecker 1";TextCall make_call(){return {};}};}
 namespace number {struct NumberCall{void set_value(int){};void perform(){}};struct Number {float state=60.0;NumberCall make_call(){return {};}};}
 namespace text_sensor {struct TextSensor{void publish_state(const char*){}};}
-namespace rtttl {struct Rtttl {void set_gain(float){}; bool is_playing()const{return false;}void play(const char*){};void stop(){}};}
+namespace speaker {struct Speaker {bool running=false; float last_volume=-1.0f; int volume_calls=0; bool is_running()const{return running;} void set_volume(float v){last_volume=v; ++volume_calls;};};}
+namespace rtttl {struct Rtttl {bool playing=false; float gain=0.0f; int plays=0, stops=0; void set_gain(float v){gain=v;} bool is_playing()const{return playing;}void play(const char*){++plays;playing=true;}void stop(){++stops;playing=false;}};}
 }
 namespace tessera {
 enum class Font {TITLE,VALUE,BODY,BODY_LARGE,HEADLINE};
