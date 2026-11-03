@@ -1,4 +1,4 @@
-# Tessera AlarmClock 0.0.2
+# Tessera AlarmClock 0.0.3
 
 Kompakter **Integrationstest** für das Guition ESP32-4848S040 (Display **Hilde**) unter Tessera.
 
@@ -13,6 +13,20 @@ Kompakter **Integrationstest** für das Guition ESP32-4848S040 (Display **Hilde*
 5. Im Layout eine Kachel "Nächster Wecker" platzieren, speichern und auf dem Display öffnen. Erwartet: 5 Platzhalter "Wecker 1" bis "Wecker 5".
 
 Vor dem Firmware-Build ein Backup der funktionierenden ESPHome/Tessera-Konfiguration erstellen. Die vorhandene Lautsprecher-YAML wird von diesem Plugin **nicht** verändert.
+
+## Änderung 0.0.3
+
+- Behebt den C++-Buildfehler `request for member c_str` in `alarmclock.cpp`: Die Tessera-API `text()` liefert `const char*` und wird direkt an `snprintf` übergeben.
+- Das bestehende Test-Plugin bleibt sonst unverändert.
+- Die ESPHome-Warnungen zu GPIO19/20, `image:` und `ota` gehören nicht zu diesem Fehler und werden hier nicht verändert.
+- Ein erfolgreicher Build muss anschließend noch in der Zielumgebung bestätigt werden.
+
+## Update über GitHub
+
+1. Alle Dateien der Version 0.0.3 nach `Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen und vorhandene Dateien überschreiben (Commit erstellen).
+2. Kontrollieren, dass `tessera-plugin.yaml` im Hauptverzeichnis Version 0.0.3 enthält.
+3. In Tessera über **Mit einem Link hinzufügen → Branch testen** Repository und Branch `main` erneut einlesen. Tessera muss den **neuen Commit** verwenden; im Build-Log darf nicht mehr der alte Commit `d8139fc6e689ec9ade5357477fc019b7d34f9210` erscheinen.
+4. Plugin auf dem Display aktualisieren und die Firmware erneut kompilieren. Falls weitere Fehler auftreten, das neue Build-Log sichern.
 
 ## Diagnose
 

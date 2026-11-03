@@ -67,7 +67,7 @@ class AlarmOverview : public tessera::Card {
       lv_obj_set_pos(rows_[i], 0, top + i * (body_h + gap));
       lv_obj_set_style_text_align(rows_[i], LV_TEXT_ALIGN_CENTER, 0);
       char line[64];
-      snprintf(line, sizeof(line), "%s %d  --:--", plugin_->text("alarm").c_str(), i + 1);
+      snprintf(line, sizeof(line), "%s %d  --:--", plugin_->text("alarm"), i + 1);
       ui::set_text(rows_[i], line);
     }
     foot_ = ui::label(c.parent, Font::BODY, theme::MUTED);
