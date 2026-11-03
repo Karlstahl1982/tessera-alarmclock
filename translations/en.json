@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "name": "English"
+  },
+  "screen": {
+    "title": "AlarmClock",
+    "none": "No alarms yet",
+    "alarm": "Alarm",
+    "prototype": "Preview only"
+  },
+  "app": {
+    "name": "AlarmClock",
+    "summary": "A small, local alarm clock for Tessera (first installation test).",
+    "tile_name": "Next alarm",
+    "tile_example": "No alarms yet",
+    "card_name": "Five alarms"
+  }
+}

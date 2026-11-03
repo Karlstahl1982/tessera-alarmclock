@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "name": "Deutsch"
+  },
+  "screen": {
+    "title": "Wecker",
+    "none": "Noch kein Alarm",
+    "alarm": "Wecker",
+    "prototype": "Nur Testansicht"
+  },
+  "app": {
+    "name": "AlarmClock",
+    "summary": "Schlanker lokaler Wecker für Tessera (erster Installationstest).",
+    "tile_name": "Nächster Wecker",
+    "tile_example": "Noch kein Alarm",
+    "card_name": "Fünf Wecker"
+  }
+}

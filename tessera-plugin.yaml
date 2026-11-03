@@ -1,0 +1,26 @@
+id: alarmclock
+version: 0.0.2
+api: '0.12'
+icon: alarm
+maintainer: Karlstahl1982
+license: MIT
+stage: beta
+topics:
+- time
+requires:
+  esphome: 2026.6.2
+boards: any
+flash_kb: 16
+tiles:
+- id: next_alarm
+  name: tile_name
+  icon: alarm
+  sizes:
+    min: 1x1
+    max: 2x2
+  memory: 512
+  example: tile_example
+cards:
+- id: overview
+  name: card_name
+  wide: true
