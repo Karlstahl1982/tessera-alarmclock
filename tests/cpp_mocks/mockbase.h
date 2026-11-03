@@ -33,6 +33,8 @@ inline void lv_obj_set_style_bg_color(lv_obj_t*,int,int){}
 inline void lv_obj_set_style_text_color(lv_obj_t*,int,int){}
 inline void lv_obj_set_style_text_font(lv_obj_t*,void*,int){}
 inline void lv_obj_set_style_border_width(lv_obj_t*,int,int){}
+inline void lv_obj_set_style_border_color(lv_obj_t*,int,int){}
+inline void lv_obj_set_style_pad_all(lv_obj_t*,int,int){}
 inline void lv_obj_set_style_radius(lv_obj_t*,int,int){}
 inline void lv_obj_set_style_bg_opa(lv_obj_t*,int,int){}
 inline void lv_obj_set_style_pad_hor(lv_obj_t*,int,int){}

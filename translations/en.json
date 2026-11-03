@@ -51,7 +51,19 @@
     "preview_tone": "▶ Play preview",
     "name": "Name",
     "delete_alarm": "Delete alarm",
-    "delete_confirm": "Delete this alarm?"
+    "delete_confirm": "Delete this alarm?",
+    "grid_hint": "Tap: edit · toggle top right",
+    "grid_on": "ON",
+    "grid_off": "OFF",
+    "grid_add": "New alarm",
+    "grid_time": "Time",
+    "grid_repeat": "Repeat",
+    "grid_tone": "Sound",
+    "grid_audio": "Audio / Snooze",
+    "grid_weekly": "Weekly",
+    "grid_once_date": "On date",
+    "grid_once": "Once",
+    "edit_short": "Edit alarm"
   },
   "app": {
     "name": "AlarmClock",

@@ -1,29 +1,17 @@
-# Änderungsprotokoll
+# Changelog
 
-## 0.2.4 – ESPHome/LVGL-Kompilierfix
+## 0.3.0 (Beta) – grafische Display-Oberfläche
 
-- Fehler bei `lv_button_create` in `alarmclock.cpp` behoben: Overlay-Aktionen verwenden jetzt anklickbare LVGL-Basisobjekte statt des optionalen Button-Widgets.
-- Gleiches Erscheinungsbild und dieselben Klick-Callbacks für **Stoppen** und **Schlummern** beibehalten.
-- Test-Mock bereinigt: Die Button-Widget-Funktion wird absichtlich nicht mehr bereitgestellt, damit dieser Fehler zukünftig im lokalen C++-Check erkannt wird.
-- Keine Änderungen an gespeicherten Weckzeiten, Home-Assistant-Karte, Lautsprecher oder Alarmablauf.
+- Neue 2×3-Kachelübersicht mit fünf Weckern und einer Plus-Kachel, solange Platz vorhanden ist.
+- Zeit, Name, Status und Wiederholung sind je Wecker visuell getrennt.
+- Ein/Aus direkt über die Statusplakette, Antippen der übrigen Kachel öffnet Bearbeiten.
+- Neue 2×2-Bearbeitungsansicht mit großen Kacheln für Zeit, Wiederholung, Ton und Ton/Schlummern.
+- Große Uhrzeit und Aktivitätsstatus im Kopf der Bearbeitung.
+- Die bisherigen Detaildialoge einschließlich Drehrädern sowie Speichern/Löschen bleiben erhalten.
+- Alarm-Vollbild/Stoppen/Schlummern und lokale Wecklogik unverändert aus 0.2.4.
+- LVGL-Zeichenobjekte werden beim Öffnen der Ansicht vorab erzeugt, nicht bei jedem Render-Durchlauf.
+- C++-Mocks und Regressionstests erweitert.
 
+## 0.2.4
 
-## 0.2.3 – UI/Alarm-Bedienung
-
-- Bestehende Wecker erhalten eine kompakte, grafische Bearbeitungsübersicht am Display; der Wizard bleibt für die Erstanlage.
-- Home Assistant: grafische Bearbeitungsansicht statt vierstufigem Wizard für vorhandene Wecker.
-- Dismissible Tessera-Popup durch blockierendes LVGL-System-Overlay ersetzt; Touches außerhalb der Aktionen werden abgefangen.
-- Ton verstummt nach der eingestellten Höchstdauer, die Quittierungsansicht bleibt bis Stoppen/Schlummern bestehen.
-- Native ESPHome-Entitäten und gespeicherte Weckerdaten bleiben kompatibel.
-
-## 0.2.2 – Lautstärkeregler
-
-- Live-Anzeige des Prozentwertes.
-
-## 0.2.1 – Home-Assistant-Zeit-/Datumsdienste
-
-- `time.set_value` und `date.set_value` statt unpassendem `datetime.set_value`.
-
-## 0.2.0 – Neugestaltung
-
-- Große Dashboard-Kachel, fünf Wecker, Touch-Wizard, eigene HA-Karte.
+- Kompatibilitätskorrektur: Standard-LVGL-Objekt statt optionalem Button-Widget.

@@ -138,6 +138,10 @@ class AlarmOverview final : public tessera::Card {
       lv_roller_set_visible_row_count(r, 3);
       color_roller(r);
     }
+    // Preallocate the 2x3 alarm grid and the four graphical edit cards.
+    // All objects are hidden while the wizard's detail screens are visible.
+    for (auto &card : list_cards_) make_visual_(c.parent, card);
+    for (auto &card : edit_cards_) make_visual_(c.parent, card);
     render_();
   }
   void on_tick(uint32_t) override { if (screen_ == LIST || screen_ == REVIEW) render_(); }
@@ -151,13 +155,27 @@ class AlarmOverview final : public tessera::Card {
     if (pt.x < 0 || pt.y < 0) return;
     const int x = pt.x, y = pt.y;
     if (screen_ == LIST) {
-      int row = (y - list_top_()) / std::max(1, list_rh_());
-      if (y >= list_top_() && row >= 0 && row < listed_) {
-        const int slot = visible_[row];
-        if (x > w_ * 4 / 5) p_->set_active(slot, !p_->enabled(slot));
-        else begin_edit_(slot);
-      } else if (y >= list_top_() && row == listed_ && listed_ < AlarmClock::COUNT) {
-        begin_new_();
+      const int gap=ui::px(8), margin=ui::px(8);
+      const int top=list_top_();
+      const int card_h=list_card_height_();
+      const int card_w=(w_-2*margin-gap)/2;
+      if (y>=top && card_h>0) {
+        const int row=(y-top)/(card_h+gap);
+        const int col=(x-margin)/(card_w+gap);
+        if (row>=0 && row<3 && col>=0 && col<2) {
+          const int card_x=margin+col*(card_w+gap);
+          const int card_y=top+row*(card_h+gap);
+          if (x>=card_x && x<card_x+card_w && y>=card_y && y<card_y+card_h) {
+            const int index=row*2+col;
+            if (index<listed_) {
+              const int slot=visible_[index];
+              // Top-right status pill is an explicit quick toggle.
+              if (x>=card_x+card_w-ui::px(52) && y<card_y+ui::px(42))
+                p_->set_active(slot,!p_->enabled(slot));
+              else begin_edit_(slot);
+            } else if (index==listed_ && listed_<AlarmClock::COUNT) begin_new_();
+          }
+        }
       }
     } else {
       const int btn_y = h_ - ui::px(48);
@@ -165,15 +183,28 @@ class AlarmOverview final : public tessera::Card {
         if (x < w_/2) previous_();
         else next_step_();
       } else if (screen_ == EDIT) {
-        // Graphical editing: a large clock and four clear, finger-sized settings.
-        const int top = ui::px(112);
-        const int rh = std::max(ui::px(28), (h_-top-ui::px(97))/4);
-        if (y < top) { screen_=TIME; init_time_wheels_(); }
-        else if (y < top + rh) screen_=TYPE;
-        else if (y < top + 2*rh) screen_=SOUND;
-        else if (y < top + 3*rh) screen_=OPTIONS;
-        else if (y >= h_-ui::px(96) && y < h_-ui::px(48)) screen_=CONFIRM_DELETE;
-        else if (y < top + 4*rh) draft_.active=!draft_.active;
+        // Top hero: time opens the wheels, status pill toggles active.
+        if (y>=ui::px(53) && y<ui::px(132)) {
+          if (x>=w_-ui::px(87)) draft_.active=!draft_.active;
+          else { screen_=TIME; init_time_wheels_(); }
+        } else if (y>=edit_grid_top_() && y<edit_grid_bottom_()) {
+          const int gap=ui::px(8), margin=ui::px(8);
+          const int cw=(w_-2*margin-gap)/2;
+          const int ch=edit_card_height_();
+          const int col=(x-margin)/(cw+gap);
+          const int row=(y-edit_grid_top_())/(ch+gap);
+          if (col>=0 && col<2 && row>=0 && row<2) {
+            const int xx=margin+col*(cw+gap), yy=edit_grid_top_()+row*(ch+gap);
+            if (x>=xx && x<xx+cw && y>=yy && y<yy+ch) {
+              switch (row*2+col) {
+                case 0: screen_=TIME;init_time_wheels_();break;
+                case 1: screen_=TYPE;break;
+                case 2: screen_=SOUND;break;
+                case 3: screen_=OPTIONS;break;
+              }
+            }
+          }
+        } else if (y>=h_-ui::px(96) && y<btn_y) screen_=CONFIRM_DELETE;
       } else if (screen_ == TYPE) {
         const int row = (y-ui::px(62)) / std::max(1, option_rh_());
         if (row >= 0 && row <= 2) draft_.mode = row;
@@ -210,7 +241,7 @@ class AlarmOverview final : public tessera::Card {
     bool active{true};
     std::string name{"Wecker"};
   } draft_{};
-  int list_top_() const { return ui::px(52); }
+  int list_top_() const { return ui::px(63); }
   int list_rh_() const { return std::max(1, (h_-list_top_()-ui::px(58))/6); }
   int option_rh_() const { return std::max(ui::px(35),(h_-ui::px(140))/5); }
   void begin_edit_(int slot) {
@@ -339,10 +370,121 @@ class AlarmOverview final : public tessera::Card {
     p_->set_occupied(selected_,true);
     p_->set_active(selected_,draft_.active);
   }
+  // These are simple LVGL primitives rather than emoji font glyphs: they
+  // render on the Guition even if the firmware contains only limited fonts.
+  struct VisualCard {
+    lv_obj_t *surface{}, *disc{}, *hand_a{}, *hand_b{};
+    lv_obj_t *title{}, *value{}, *meta{}, *status{};
+  };
+  void make_visual_(lv_obj_t *parent, VisualCard &c) {
+    c.surface=lv_obj_create(parent);
+    c.disc=lv_obj_create(parent);
+    c.hand_a=lv_obj_create(parent);
+    c.hand_b=lv_obj_create(parent);
+    for (auto *obj:{c.surface,c.disc,c.hand_a,c.hand_b}) {
+      lv_obj_remove_flag(obj,LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_remove_flag(obj,LV_OBJ_FLAG_SCROLLABLE);
+      lv_obj_set_style_border_width(obj,0,0);
+      lv_obj_set_style_pad_all(obj,0,0);
+    }
+    c.title=ui::label(parent,Font::BODY,theme::INK);
+    c.value=ui::label(parent,Font::VALUE,theme::INK);
+    c.meta=ui::label(parent,Font::BODY,theme::MUTED);
+    c.status=ui::label(parent,Font::BODY,theme::INK);
+  }
+  void show_visual_(VisualCard &c,bool visible) {
+    for (auto *obj:{c.surface,c.disc,c.hand_a,c.hand_b,c.title,c.value,c.meta,c.status})
+      toggle_hidden(obj,visible);
+  }
+  void paint_visual_(VisualCard &c,int x,int y,int w,int h,
+                     const char *title,const char *value,const char *meta,
+                     const char *status,bool active,bool add=false,bool editor=false,int icon_mode=0) {
+    // Each card has its own visible boundary, icon disk and analog clock marks.
+    lv_obj_set_pos(c.surface,x,y);
+    lv_obj_set_size(c.surface,w,h);
+    lv_obj_set_style_radius(c.surface,ui::px(14),0);
+    lv_obj_set_style_bg_color(c.surface,ui::color(theme::CARD),0);
+    lv_obj_set_style_bg_opa(c.surface,LV_OPA_COVER,0);
+    lv_obj_set_style_border_width(c.surface,active?ui::px(2):ui::px(1),0);
+    lv_obj_set_style_border_color(c.surface,ui::color(active?theme::ACCENT:theme::MUTED),0);
+    const int disc=ui::px(editor?27:26);
+    const int circle_x=x+ui::px(11), circle_y=y+ui::px(9);
+    lv_obj_set_pos(c.disc,circle_x,circle_y);
+    lv_obj_set_size(c.disc,disc,disc);
+    lv_obj_set_style_radius(c.disc,disc/2,0);
+    lv_obj_set_style_bg_opa(c.disc,LV_OPA_COVER,0);
+    lv_obj_set_style_bg_color(c.disc,ui::color(active?theme::ACCENT:theme::MUTED),0);
+    const int mid_x=circle_x+disc/2, mid_y=circle_y+disc/2;
+    if (icon_mode==1) { // repetition: parallel cycle strokes
+      lv_obj_set_pos(c.hand_a,circle_x+ui::px(6),circle_y+ui::px(8));
+      lv_obj_set_size(c.hand_a,ui::px(14),ui::px(2));
+      lv_obj_set_pos(c.hand_b,circle_x+ui::px(6),circle_y+ui::px(17));
+      lv_obj_set_size(c.hand_b,ui::px(14),ui::px(2));
+    } else if (icon_mode==2) { // sound: equalizer bars
+      lv_obj_set_pos(c.hand_a,circle_x+ui::px(8),circle_y+ui::px(6));
+      lv_obj_set_size(c.hand_a,ui::px(3),ui::px(16));
+      lv_obj_set_pos(c.hand_b,circle_x+ui::px(16),circle_y+ui::px(10));
+      lv_obj_set_size(c.hand_b,ui::px(3),ui::px(9));
+    } else if (icon_mode==3) { // settings: slider handle
+      lv_obj_set_pos(c.hand_a,circle_x+ui::px(6),mid_y-ui::px(1));
+      lv_obj_set_size(c.hand_a,ui::px(16),ui::px(2));
+      lv_obj_set_pos(c.hand_b,mid_x-ui::px(2),circle_y+ui::px(7));
+      lv_obj_set_size(c.hand_b,ui::px(4),ui::px(12));
+    } else { // clock hands
+      lv_obj_set_pos(c.hand_a,mid_x-ui::px(1),circle_y+ui::px(5));
+      lv_obj_set_size(c.hand_a,ui::px(2),ui::px(9));
+      lv_obj_set_pos(c.hand_b,mid_x,mid_y-ui::px(1));
+      lv_obj_set_size(c.hand_b,ui::px(7),ui::px(2));
+    }
+    for (auto *line:{c.hand_a,c.hand_b}) {
+      lv_obj_set_style_bg_opa(line,LV_OPA_COVER,0);
+      lv_obj_set_style_bg_color(line,ui::color(theme::ON_ACCENT),0);
+      lv_obj_set_style_radius(line,ui::px(1),0);
+    }
+    // Primary values are large; explanatory copy is deliberately compact.
+    if (add) {
+      place_label(c.title,x+ui::px(6),y+h-ui::px(32),w-ui::px(12),ui::px(27),title);
+      place_label(c.value,x+ui::px(4),y+h/2-ui::px(31),w-ui::px(8),ui::px(58),"+");
+      lv_obj_set_style_text_font(c.value,ui::font(Font::VALUE),0);
+      toggle_hidden(c.disc,false);toggle_hidden(c.hand_a,false);toggle_hidden(c.hand_b,false);
+      toggle_hidden(c.meta,false);toggle_hidden(c.status,false);
+    } else if(editor) {
+      place_label(c.title,x+ui::px(42),y+ui::px(3),w-ui::px(48),ui::px(22),title);
+      place_label(c.value,x+ui::px(7),y+h-ui::px(30),w-ui::px(14),ui::px(27),value);
+      lv_obj_set_style_text_font(c.value,ui::font(Font::BODY_LARGE),0);
+      toggle_hidden(c.meta,false);toggle_hidden(c.status,false);
+    } else {
+      place_label(c.value,x+ui::px(5),y+ui::px(24),w-ui::px(10),ui::px(36),value);
+      lv_obj_set_style_text_font(c.value,ui::font(Font::VALUE),0);
+      place_label(c.title,x+ui::px(7),y+h-(h>=ui::px(91)?ui::px(48):ui::px(27)),w-ui::px(14),ui::px(23),title);
+      lv_obj_set_style_text_font(c.title,ui::font(Font::BODY_LARGE),0);
+      if (h>=ui::px(91)) {
+        place_label(c.meta,x+ui::px(7),y+h-ui::px(23),w-ui::px(14),ui::px(20),meta);
+      } else toggle_hidden(c.meta,false);
+      if (status && *status) {
+        const int bw=ui::px(43);
+        place_label(c.status,x+w-bw-ui::px(7),y+ui::px(8),bw,ui::px(26),status);
+        lv_obj_set_style_bg_opa(c.status,LV_OPA_COVER,0);
+        lv_obj_set_style_bg_color(c.status,ui::color(active?theme::ACCENT:theme::CARD),0);
+        lv_obj_set_style_text_color(c.status,ui::color(active?theme::ON_ACCENT:theme::MUTED),0);
+        lv_obj_set_style_radius(c.status,ui::px(10),0);
+      } else toggle_hidden(c.status,false);
+    }
+  }
+  int list_card_height_() const {
+    return std::max(1,(h_-list_top_()-ui::px(16)-2*ui::px(8))/3);
+  }
+  int edit_grid_top_() const { return ui::px(139); }
+  int edit_grid_bottom_() const { return h_-ui::px(103); }
+  int edit_card_height_() const {
+    return std::max(1,(edit_grid_bottom_()-edit_grid_top_()-ui::px(8))/2);
+  }
   void hide_all_() {
     for(auto *r:rows_) toggle_hidden(r,false);
     for(auto *d:days_) toggle_hidden(d,false);
     for(auto *r:{hour_,minute_,day_,month_,year_}) toggle_hidden(r,false);
+    for(auto &c:list_cards_) show_visual_(c,false);
+    for(auto &c:edit_cards_) show_visual_(c,false);
     toggle_hidden(title_,true); toggle_hidden(subtitle_,true);
     toggle_hidden(back_,false);toggle_hidden(next_,false);
   }
@@ -368,22 +510,36 @@ class AlarmOverview final : public tessera::Card {
     hide_all_();
     char b[140];
     if (screen_==LIST) {
-      heading_(p_->text("list_title"),p_->text("list_subtitle"));
+      heading_(p_->text("list_title"),p_->text("grid_hint"));
       listed_=0;
-      for(int i=0;i<AlarmClock::COUNT;++i) if(p_->occupied(i)) visible_[listed_++]=i;
-      for(int row=0;row<listed_;++row) {
-        const int i=visible_[row];
-        std::snprintf(b,sizeof(b),"%02d:%02d   %s   %s",p_->hour(i),p_->minute(i),p_->alarm_name(i),p_->enabled(i)?"AN":"AUS");
-        chip_(rows_[row],ui::px(2),list_top_()+row*list_rh_(),w_-ui::px(4),list_rh_()-ui::px(3),b,false);
-        toggle_hidden(rows_[row],true);
+      for(int i=0;i<AlarmClock::COUNT;++i)
+        if(p_->occupied(i)) visible_[listed_++]=i;
+      char count[16];
+      std::snprintf(count,sizeof(count),"%d / 5",listed_);
+      chip_(rows_[8],w_-ui::px(76),ui::px(3),ui::px(66),ui::px(28),count);
+      toggle_hidden(rows_[8],true);
+      const int gap=ui::px(8), margin=ui::px(8);
+      const int cw=(w_-2*margin-gap)/2;
+      const int ch=list_card_height_();
+      for(int n=0;n<6;++n) {
+        if(n>=listed_ && (n!=listed_ || listed_==AlarmClock::COUNT)) continue;
+        const int x=margin+(n%2)*(cw+gap);
+        const int y=list_top_()+(n/2)*(ch+gap);
+        auto &card=list_cards_[n];
+        show_visual_(card,true);
+        if(n==listed_) {
+          paint_visual_(card,x,y,cw,ch,p_->text("grid_add"),"","","",true,true,false);
+        } else {
+          const int slot=visible_[n];
+          const bool active=p_->enabled(slot);
+          char t[10];
+          std::snprintf(t,sizeof(t),"%02d:%02d",p_->hour(slot),p_->minute(slot));
+          const char *freq=p_->mode(slot)==2?p_->text("grid_weekly"):
+                            p_->mode(slot)==1?p_->text("grid_once_date"):p_->text("grid_once");
+          paint_visual_(card,x,y,cw,ch,p_->alarm_name(slot),t,freq,
+                        active?p_->text("grid_on"):p_->text("grid_off"),active);
+        }
       }
-      if (listed_<AlarmClock::COUNT) {
-        chip_(rows_[listed_],ui::px(2),list_top_()+listed_*list_rh_(),w_-ui::px(4),list_rh_()-ui::px(3),p_->text("add_alarm"),true);
-        toggle_hidden(rows_[listed_],true);
-      }
-      if (!listed_) place_label(subtitle_,0,h_/2,w_,ui::px(35),p_->text("empty_list"));
-      place_label(rows_[7],0,h_-ui::px(37),w_,ui::px(32),p_->time_valid()?p_->text("list_hint"):p_->text("clock_missing"));
-      toggle_hidden(rows_[7],true);
       return;
     }
     const char *step="";
@@ -403,25 +559,36 @@ class AlarmOverview final : public tessera::Card {
     heading_(b,draft_.name.c_str());
     footer_((screen_==REVIEW || screen_==EDIT)?p_->text("save"):(screen_==CONFIRM_DELETE)?p_->text("delete_alarm"):p_->text("continue"));
     if (screen_==EDIT) {
-      // Dedicated edit view: tap the big clock or any setting to edit it.
+      heading_(p_->text("edit_short"),draft_.name.c_str());
+      // Prominent clock hero; tap time to open wheels, tap status to toggle.
       std::snprintf(b,sizeof(b),"%02d:%02d",draft_.hour,draft_.minute);
-      place_label(rows_[7],0,ui::px(56),w_,ui::px(53),b);
+      place_label(rows_[7],ui::px(12),ui::px(58),w_-ui::px(108),ui::px(68),b);
       lv_obj_set_style_text_font(rows_[7],ui::font(Font::VALUE),0);
       toggle_hidden(rows_[7],true);
-      const int top=ui::px(112);
-      const int rh=std::max(ui::px(28),(h_-top-ui::px(97))/4);
-      const char *mode=draft_.mode==0?p_->text("mode_next"):draft_.mode==1?p_->text("mode_date"):p_->text("mode_weekly");
-      std::snprintf(b,sizeof(b),"%s: %s  >",p_->text("step_type"),mode);
-      chip_(rows_[0],ui::px(5),top,w_-ui::px(10),rh-ui::px(3),b);
-      const char *tone=p_->text(draft_.tone==0?"tone_classic":draft_.tone==1?"tone_gentle":draft_.tone==2?"tone_digital":draft_.tone==3?"tone_sunrise":"tone_urgent");
-      std::snprintf(b,sizeof(b),"%s: %s  >",p_->text("step_sound"),tone);
-      chip_(rows_[1],ui::px(5),top+rh,w_-ui::px(10),rh-ui::px(3),b);
-      std::snprintf(b,sizeof(b),"%s: %d%%  /  %d min  >",p_->text("volume"),draft_.volume,draft_.snooze);
-      chip_(rows_[2],ui::px(5),top+rh*2,w_-ui::px(10),rh-ui::px(3),b);
-      std::snprintf(b,sizeof(b),"%s: %s",p_->text("enabled"),draft_.active?p_->text("on"):p_->text("off"));
-      chip_(rows_[3],ui::px(5),top+rh*3,w_-ui::px(10),rh-ui::px(3),b,draft_.active);
-      for(int i=0;i<4;++i) toggle_hidden(rows_[i],true);
-      chip_(rows_[6],ui::px(22),h_-ui::px(94),w_-ui::px(44),ui::px(43),p_->text("delete_alarm"));
+      chip_(rows_[8],w_-ui::px(88),ui::px(70),ui::px(79),ui::px(39),
+            draft_.active?p_->text("grid_on"):p_->text("grid_off"),draft_.active);
+      toggle_hidden(rows_[8],true);
+      // Two-by-two feature tiles keep the settings scannable at 4 inches.
+      const char *captions[4]={p_->text("grid_time"),p_->text("grid_repeat"),
+                                p_->text("grid_tone"),p_->text("grid_audio")};
+      char values[4][58];
+      std::snprintf(values[0],sizeof(values[0]),"%02d:%02d",draft_.hour,draft_.minute);
+      const char *frequency=draft_.mode==2?p_->text("grid_weekly"):
+                            draft_.mode==1?p_->text("grid_once_date"):p_->text("grid_once");
+      std::snprintf(values[1],sizeof(values[1]),"%s",frequency);
+      const char *tone=p_->text(draft_.tone==0?"tone_classic":draft_.tone==1?"tone_gentle":
+                                draft_.tone==2?"tone_digital":draft_.tone==3?"tone_sunrise":"tone_urgent");
+      std::snprintf(values[2],sizeof(values[2]),"%s",tone);
+      std::snprintf(values[3],sizeof(values[3]),"%d%% · %d Min",draft_.volume,draft_.snooze);
+      const int gap=ui::px(8), margin=ui::px(8);
+      const int cw=(w_-2*margin-gap)/2;
+      const int ch=edit_card_height_();
+      for(int n=0;n<4;++n) {
+        const int x=margin+(n%2)*(cw+gap),y=edit_grid_top_()+(n/2)*(ch+gap);
+        show_visual_(edit_cards_[n],true);
+        paint_visual_(edit_cards_[n],x,y,cw,ch,captions[n],values[n],"","",true,false,true,n);
+      }
+      chip_(rows_[6],ui::px(27),h_-ui::px(96),w_-ui::px(54),ui::px(40),p_->text("delete_alarm"));
       toggle_hidden(rows_[6],true);
     } else if(screen_==TYPE) {
       for(int i=0;i<3;++i) {
@@ -490,6 +657,7 @@ class AlarmOverview final : public tessera::Card {
   int visible_[AlarmClock::COUNT]{};
   lv_obj_t *title_{},*subtitle_{},*rows_[9]{},*days_[7]{},*back_{},*next_{};
   lv_obj_t *hour_{},*minute_{},*day_{},*month_{},*year_{};
+  VisualCard list_cards_[6]{}, edit_cards_[4]{};
 };
 
 

@@ -1,38 +1,29 @@
-# Tessera AlarmClock v0.2.4
+# Tessera AlarmClock 0.3.0 (Beta)
 
-Lokaler Wecker für Tessera auf dem Guition ESP32-4848S040. Bis zu fünf Wecker, eigener Lautsprecher über bestehendes ESPHome-RTTTL-Setup, Steuerung direkt am Display und über eine Home-Assistant-Karte.
+Schlanker Offline-Wecker für das Guition ESP32-4848S040 mit Tessera und Home Assistant.
 
-## Änderungen gegenüber 0.2.3
+## Display-Bedienung
 
-- **LVGL-Kompilierfehler behoben:** Alarm-Schaltflächen werden als klickbare Basisobjekte aufgebaut. Das funktioniert auch ohne aktiviertes `LV_USE_BUTTON`.
-- **Keine Datenmigration:** Wecker, Audio, Assistent und HA-Karte bleiben unverändert.
+- Die Tessera-Kachel „Nächster Wecker“ öffnet die grafische Weckerübersicht.
+- Je Wecker: Uhrzeit, Name, wiederkehrend/einmalig und Statusplakette **AN/AUS**.
+- Statusplakette oben rechts antippen: direkt ein- oder ausschalten.
+- Rest der Weckerkachel antippen: grafische Bearbeiten-Ansicht.
+- `+`-Kachel: neuen Wecker über bestehenden Assistenten erstellen (maximal fünf).
+- Bearbeiten: Uhrzeit (auch im großen Uhrzeitfeld), Rhythmus, Klang oder Lautstärke/Schlummern als Kacheln öffnen.
+- Der Wecker wird erst nach Tippen auf **Speichern** übernommen.
+- **Alarm-Vollbild** lässt sich nur über Stoppen oder Schlummern quittieren.
 
-## Bestehende Funktionen aus 0.2.3
+## GitHub / Tessera aktualisieren
 
-- **Grafisches Bearbeiten direkt am Touchdisplay:** Große Uhrzeit, Felder für Wiederholung, Klang, Lautstärke, Schlummern/Status. Keine erneute mehrstufige Neuanlage beim Bearbeiten. Alle Felder sind berührbar; Uhrzeit bleibt über zwei LVGL-Roller einstellbar.
-- **Grafisches Bearbeiten in Home Assistant:** Zusammenhängende Bearbeitungsseite mit großer Uhrzeit, Karten für Wiederholung, Klang, Lautstärke, Schlummern und Status. Anlegen bleibt ein Wizard.
-- **Blockierende Alarmansicht:** Eigenständiges, bildschirmfüllendes LVGL-Overlay auf der System-Ebene, das Navigation und Hintergrund-Taps abfängt. Die Alarmansicht verschwindet nur nach explizitem Stoppen oder Schlummern (bzw. Stoppen über die Home-Assistant-Aktion). Bei maximaler Schlummerzahl wird Schlummern ausgeblendet.
-- **Maximale Alarmdauer:** Nach 5 Minuten wird der Ton stummgeschaltet. Die Bestätigungsansicht bleibt sichtbar, bis der Nutzer handelt. Der 15-Sekunden-Testalarm verhält sich entsprechend.
-- **Bestehende Entitäten und Speicherung:** unverändert, keine Datenmigration erforderlich.
+1. ZIP entpacken und alle Dateien aus dem Paket direkt in den Stamm des GitHub-Repositories `Karlstahl1982/tessera-alarmclock` hochladen und ersetzen.
+2. Commit auf `main` durchführen.
+3. Tessera → Plugins → Mit einem Link hinzufügen → **Branch testen** (`main`).
+4. Vergewissern, dass Version **0.3.0** und der neue Commit verwendet werden.
+5. Firmware zunächst nur kompilieren. Bei Erfolg auf „Hilde“ übertragen.
+6. Weckerkachel öffnen und Raster/Bearbeitung prüfen.
 
-## Installation / Update
+**Kompatibilität:** Basiert auf funktionierender v0.2.4; ESPHome 2026.9.0, Tessera screens-v0.4.96. Tests mit C++-Mock-Schnittstellen sind keine Bestätigung eines echten Firmware-Builds.
 
-1. **Vor dem Update:** Aktuelle AlarmClock-Konfiguration und vorhandene Wecker prüfen; bei kritischen Weckzeiten unabhängigen Ersatzwecker verwenden.
-2. Alle Dateien **aus dem Inhalt dieses ZIPs** direkt ins Repository `https://github.com/Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen. Im Repository-Hauptverzeichnis müssen `plugin.yaml` und `tessera-plugin.yaml` liegen.
-3. In Tessera unter **Plugins → AlarmClock** Branch `main` aktualisieren/neu lesen, Version **0.2.4** prüfen und Firmware für **Hilde** erstellen und aufspielen. Es handelt sich um eine **Firmware-Änderung**, nicht nur um eine Home-Assistant-Karte.
-4. **Home-Assistant-Karte nicht neu installieren:** Die Datei liegt der Vollständigkeit halber bei und ist unverändert gegenüber 0.2.3. Die bestehende Lovelace-Ressource kann bleiben.
-5. Auf dem Display eine vorhandene Weckzeit antippen, grafisch bearbeiten und speichern. Danach **Testalarm** auslösen. Prüfen, dass Hintergrund-Taps und Zurück-Gesten die Alarmansicht nicht schließen und dass **Stoppen** zuverlässig funktioniert.
+**Home Assistant:** Die bisherige `ha_card/tessera-alarmclock-card.js` bleibt funktionsgleich. Kein erneutes Installieren erforderlich.
 
-## Architektur
-
-Die ESP32-Komponente `components/alarmclock` verwaltet die Wecker und veröffentlicht native ESPHome-Entitäten. Der Display-Dialog ist über Tessera als `overview` registriert. Für aktiven Alarm wird eine LVGL-System-Ebene (`lv_layer_sys`) erstellt; sie fängt die Touch-Ereignisse ab. Der Wecker arbeitet bei bekannter Uhrzeit unabhängig von WLAN und Home Assistant. Ohne RTC kann er nach vollständigem Neustart erst mit gültiger Uhrzeit zuverlässig auslösen.
-
-## Prüfen
-
-Im entpackten Projektordner:
-
-- `python -m unittest discover -s tests -v` (benötigt PyYAML, Node.js und für C++-Mock-Test g++)
-- `node --check ha_card/tessera-alarmclock-card.js`
-- `node tests/test_frontend.js`
-
-**Grenzen:** Mock-/Syntaxprüfungen ersetzen keinen echten ESPHome-Build. Das LVGL-System-Overlay und seine Touch-Abschirmung müssen auf deinem Guition mit Tessera `screens-v0.4.96` oder neuer getestet werden. Bildschirmabschaltung/Standby während eines Alarms ist noch nicht separat geprüft. Bei Stromausfall besteht ohne RTC/Akku keine Weckgarantie.
+**Hinweis:** Vorherige Weckzeiten bleiben über ESPHome-Entitäten und lokale Präferenzen bestehen. Zur Sicherheit wichtige Weckzeiten vor dem Flashen notieren.

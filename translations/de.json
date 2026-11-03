@@ -51,7 +51,19 @@
     "preview_tone": "▶ Hörprobe",
     "name": "Name",
     "delete_alarm": "Wecker löschen",
-    "delete_confirm": "Diesen Wecker wirklich löschen?"
+    "delete_confirm": "Diesen Wecker wirklich löschen?",
+    "grid_hint": "Tippen: bearbeiten · AN/AUS oben rechts",
+    "grid_on": "AN",
+    "grid_off": "AUS",
+    "grid_add": "Neuer Wecker",
+    "grid_time": "Uhrzeit",
+    "grid_repeat": "Rhythmus",
+    "grid_tone": "Klang",
+    "grid_audio": "Ton / Snooze",
+    "grid_weekly": "Wöchentlich",
+    "grid_once_date": "Mit Datum",
+    "grid_once": "Einmalig",
+    "edit_short": "Bearbeiten"
   },
   "app": {
     "name": "AlarmClock",

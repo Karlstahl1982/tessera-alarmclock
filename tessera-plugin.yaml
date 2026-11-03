@@ -1,5 +1,5 @@
 id: alarmclock
-version: 0.2.4
+version: 0.3.0
 api: '0.18'
 icon: alarm
 maintainer: Karlstahl1982
@@ -18,7 +18,7 @@ tiles:
   sizes:
     min: 1x1
     max: 2x3
-  memory: 1250
+  memory: 4500
   example: tile_example
 cards:
 - id: overview

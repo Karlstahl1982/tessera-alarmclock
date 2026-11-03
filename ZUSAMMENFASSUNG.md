@@ -1,44 +1,36 @@
-# Projektzusammenfassung – Tessera AlarmClock 0.2.4
+# Tessera AlarmClock – Projektzusammenfassung
 
-## Ziel
-
-Fünf lokal betriebene Wecker für Tessera auf Guition ESP32-4848S040 mit intuitiver Touchbedienung, Home-Assistant-Anbindung, akustischem Alarm und bewusstem Quittieren.
-
-## Behebung in Version 0.2.4
-
-**Auslöser:** Der reale ESPHome-Build auf Hilde (ESPHome 2026.9.0, Tessera `screens-v0.4.96`) bricht bei `lv_button_create()` ab. In dieser Buildkonfiguration ist das optionale LVGL-Button-Widget nicht verfügbar. Der bisherige C++-Mock enthielt diese Funktion fälschlich und verdeckte das Problem.
-
-**Korrektur:** Die beiden Alarm-Aktionen werden jetzt mit `lv_obj_create()` aufgebaut, als klickbar markiert und mit denselben Stoppen-/Schlummern-Callbacks verbunden. Der Mock wurde angepasst. Keine weiteren Funktionsänderungen.
+**Version:** 0.3.0 (Beta)  
+**Ziel:** Grafischer, intuitiv bedienbarer eigenständiger Wecker auf Guition ESP32-4848S040, mit fünf lokalen Alarmen und Home-Assistant-Anbindung.
 
 ## Arbeitsschritte
 
-- [x] ESP32 als führende Datenquelle; fünf Slots, Wiederholungen und lokale Speicherung aus dem vorhandenen Projekt übernehmen.
-- [x] Neue grafische Bearbeitungsübersicht auf dem Guition-Display (Zeit, Wiederholung, Klang, Optionen, Aktivierung, Löschen).
-- [x] Grafischen Bearbeitungsbildschirm in der Home-Assistant-Karte ergänzen; neue Wecker weiterhin per Wizard.
-- [x] Bildschirmfüllendes LVGL-Overlay für Alarme; Hintergrund-Taps werden nicht als Schließen verarbeitet.
-- [x] Nach fünf Minuten akustisch stummschalten, Anzeige bis zu Stoppen/Schlummern offen halten; Testalarm nach 15 Sekunden stummschalten.
-- [x] Bestehende Datenstruktur, Entitäten und Lautsprecheransteuerung beibehalten.
-- [x] Automatisierte JS-/Python- und C++-Mock-Checks ergänzen.
-- [x] Compilerfehler bei LVGL-Button-Erstellung korrigieren und Regressionstest ergänzen.
-- [ ] Echten ESPHome-Firmware-Build in Tessera und Update auf Display Hilde durchführen.
-- [ ] Touch-Blocking, Stopp-/Schlummer-Tasten und Layout am echten 4-Zoll-Display verifizieren.
-- [ ] Standby/Backlight-Verhalten sowie mehrere gleichzeitig klingelnde Alarme in der Praxis prüfen.
+- [x] v0.2.4 als funktionierenden Ausgangsstand übernommen.
+- [x] Grafische 2-spaltige Weckerliste für bis zu fünf Alarme mit Plus-Kachel umgesetzt.
+- [x] Kachel mit Uhrzeit, Name, Rhythmus und Status AN/AUS.
+- [x] 2×2-Bearbeitungskacheln für Uhrzeit, Wiederholung, Klang und Lautstärke/Schlummern.
+- [x] Bestehende Detailseiten und den Drehrad-Uhrzeitdialog angebunden.
+- [x] Blockierenden Alarm und Audioausgabe aus v0.2.4 unverändert gelassen.
+- [x] Übersetzungen, Manifest und automatisierte Tests aktualisiert.
+- [ ] Echten ESPHome-Build unter Tessera auf dem Zielgerät prüfen.
+- [ ] 480×480-Display auf Lesbarkeit, Hitboxen und Speicherauslastung prüfen.
+- [ ] Offline-Funktion bei HA-/WLAN-Ausfall erneut prüfen.
 
-## Probleme und umgangene Schwierigkeiten
+## Probleme / Umgehungen
 
-- Tessera-Popups können sich bei Hintergrund-Taps schließen. Umgangen durch eine eigene Ebene über `lv_layer_sys`, die das Display vollständig bedeckt und Touch-Ereignisse selbst annimmt. Dies muss mit der realen Tessera-Firmware geprüft werden.
-- Bei automatischer Beendigung nach fünf Minuten verschwand die Alarmoberfläche auch ohne Nutzeraktion. Tonende und Bestätigung sind jetzt getrennt.
-- Nachträgliches Bearbeiten führte durch den mehrstufigen Neuanlage-Wizard. Bestehende Einträge öffnen jetzt direkt eine grafische Bearbeitungsübersicht.
-- Ohne RTC ist ein Wecker nach vollständigem Stromverlust bis zur neuen Zeitsynchronisation nicht zuverlässig; bewusst unverändert.
+- **LVGL Button-Widget fehlte in 0.2.3:** In v0.2.4 bereits durch Standard-LVGL-Objekt ersetzt; v0.3.0 übernimmt diese Lösung.
+- **Kleine Displayfläche:** Texte reduziert, Weckerkacheln und Bearbeiten-Raster eingeführt. Ob Schriftgrößen bei der individuellen Tessera-Skalierung passen, muss im Gerätetest bestätigt werden.
+- **Fehlende Font-Glyphen für Emoji/Symbole:** Uhrgrafiken aus LVGL-Formen statt nicht garantierter Symbolfonts.
+- **Speicher:** Card-Widgets werden einmalig beim Öffnen erstellt, nicht bei jedem UI-Tick. Das Manifest erhält ein erhöhtes Speicherbudget; tatsächlichen Verbrauch im Build beobachten.
+- **Kompatibilität:** C++-Syntaxprüfung mit Mocks ist kein ESPHome-Vollbuild. Bei Kompilierfehlern Buildlog prüfen; Firmware v0.2.4 bleibt bis zum erfolgreichen Update verwendbar.
 
 ## Installation
 
-1. ZIP entpacken, Dateien direkt ins Root-Verzeichnis des GitHub-Repositories `Karlstahl1982/tessera-alarmclock` hochladen und auf Branch `main` committen.
-2. Plugin in Tessera neu laden, Version 0.2.4 auswählen, Firmware für **Hilde** erzeugen und installieren.
-3. **Keine Änderung an Home Assistant erforderlich.** Die mitgelieferte Karte ist inhaltlich identisch mit v0.2.3. Bestehende Ressource und Browser-Konfiguration unverändert lassen.
-4. Nach erfolgreichem Build/Flash einen Testalarm durchführen. Prüfen, dass Hintergrund-Taps den Dialog nicht schließen und **Stoppen** sowie **Schlummern** reagieren.
-5. Während des Praxistests einen unabhängigen Ersatzwecker einsetzen.
+1. `Tessera_AlarmClock_0.3.0.zip` entpacken.
+2. Gesamten Paketinhalt ohne äußeren Versionsordner in das bestehende öffentliche GitHub-Repository hochladen (`main`).
+3. Tessera → Plugin via Link → Branch testen → `main`.
+4. Version **0.3.0** prüfen, Firmware kompilieren; erst nach erfolgreichem Build flashen.
+5. Hauptkachel „Nächster Wecker“ öffnen und alle Kacheln testen; insbesondere Status-Toggle und Speichern.
+6. Die HA-Karte erfordert kein Update, da an ihr nichts geändert wurde.
 
-## Teststatus
-
-Automatisierte Prüfungen im ZIP unter `tests/`. Der Build von v0.2.3 ist an `lv_button_create()` gescheitert; der korrigierte Build von v0.2.4 steht noch aus; daher Beta/Testversion und **keine** Zusage eines für wichtige Termine ausfallsicheren Weckers.
+**Rückweg:** Bei Problemen im Repository auf v0.2.4 zurückgehen und Tessera erneut bauen.

@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.2.4')
+        self.assertEqual(self.manifest['version'],'0.3.0')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -103,6 +103,23 @@ class PackageTest(unittest.TestCase):
         for fragment in ('_editor(){', 'class="edit-hero"', 'class="edit-grid"',
                          'data-action="save-edit"', "this._mode='edit'", "action==='save-edit'"):
             self.assertIn(fragment,js)
+
+    def test_display_grid_contract(self):
+        # 2 columns x 3 rows, with an add tile and direct status toggle.
+        for token in ('VisualCard list_cards_[6]', 'edit_cards_[4]',
+                      'void paint_visual_', 'void make_visual_',
+                      'const int index=row*2+col;', 'if (index==listed_',
+                      'if (screen_==EDIT)', 'switch (row*2+col)',
+                      'toggle_hidden(c.disc,false)', 'p_->text("grid_add")'):
+            self.assertIn(token,self.cpp)
+        # LVGL object construction happens at card-open only, never in rendering.
+        render=self.cpp.split('void render_()',1)[1].split('AlarmClock *p_',1)[0]
+        self.assertNotIn('lv_obj_create(',render)
+        for lang in ('de','en'):
+            labels=json.loads((ROOT/f'translations/{lang}.json').read_text())['screen']
+            for key in ('grid_add','grid_time','grid_repeat','grid_audio','grid_tone',
+                        'grid_on','grid_off','edit_short'):
+                self.assertIn(key,labels)
 
     def test_cpp_mock_compilation(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
