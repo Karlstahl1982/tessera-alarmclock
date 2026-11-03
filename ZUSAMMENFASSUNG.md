@@ -1,40 +1,34 @@
-# Tessera AlarmClock – Projektstatus v0.0.4
+# Tessera AlarmClock – Projektzusammenfassung v0.0.5
 
 ## Ziel
-Ein kompakter, offline nach Uhrzeitsynchronisierung funktionierender 5-Wecker für Tessera auf Guition ESP32-4848S040 (Hilde), mit Touchbedienung, ESPHome-Entitäten für Home Assistant und vorhandener RTTTL-Audiohardware.
+Kompakter, lokaler Wecker auf Guition ESP32-4848S040 mit Tessera-Touchoberfläche, fünf Weckerplätzen, Alarmton und Home-Assistant-Verwaltung. Der ESP32 soll später die führende Quelle für Weckzeiten sein. Ein zuverlässiger Alarm ist derzeit **noch nicht gewährleistet**.
 
-## Arbeitsschritte (aktueller Stand)
-- [x] GitHub-Repository vorhanden und Tessera erkennt die Plugin-Metadaten.
-- [x] v0.0.3 erfolgreich auf der Zielhardware kompiliert (Nutzerbestätigung).
-- [x] v0.0.3: Kachel öffnet fünf Platzhalter auf dem Display (Nutzerbestätigung).
-- [x] v0.0.4: Erste Einmal-Weckzeit (Stunde/Minute), Aktivierung, lokale Prüfung und Tonausgabe implementiert.
-- [x] v0.0.4: ESPHome-Entitäten (Stunde/Minute/Schalter) und Buttons (Test/Stop) eingebaut.
-- [x] v0.0.4: Softwarestrukturen statisch überprüft; ZIP-Inhalt vollständig.
-- [ ] Version 0.0.4 im GitHub-Repository auf `main` aktualisieren.
-- [ ] v0.0.4 in Tessera neu einlesen, Firmware kompilieren/installieren – **noch nicht getestet**.
-- [ ] 15-Sekunden-Testalarm und einmalige Weckzeit am echten Display prüfen.
-- [ ] Plätze 2–5 als reale Wecker ergänzen.
-- [ ] Einstellen über die eigene Weckerseite, wiederkehrende Wochentage, Snooze, Melodien, 60s-Lautstärkerampe, Displayhelligkeit, lokaler Alarmbildschirm ergänzen.
-- [ ] Offline-Verhalten bei unterbrochenem WLAN/HA und 5-Minuten-Nachholen nach Neustart verifizieren/implementieren.
+## Arbeitsschritte / Status
+- [x] Lautsprecher auf Hilde funktionsfähig, Testton kommt.
+- [x] Plugin-Skelett und fünf Weckerplätze (v0.0.3) werden angezeigt.
+- [x] Erster Einmalwecker mit lokalem Auslösen und Testton (v0.0.4) erstellt; User bestätigt Ton und Stoppen.
+- [x] Problem erkannt: v0.0.4 nutzt Zahlen-Schieberegler 0–59 statt echte Uhrzeiteingabe.
+- [x] v0.0.5: native ESPHome-Zeit-Entität für HH:MM und separate -/+ Touchbedienung implementiert; Syntax-/Paketchecks ausgeführt.
+- [ ] v0.0.5 in Tessera kompilieren und auf Hilde testen (noch nicht geprüft).
+- [ ] Lokale Alarmzustände/Flash-Persistenz und Offline-Verhalten testen.
+- [ ] Vier weitere Wecker implementieren.
+- [ ] Später: Wochentage, Schlummern 5/10 Minuten max. 3-mal, 5-Minuten-Nachholen, Vollbild-Alarm, sanfter Lautstärkeanstieg 60 Sekunden, Alarmhelligkeit.
+- [ ] Später: eigene Home-Assistant-Dashboard-Karte.
 
-## Probleme und Umgehungen
-- v0.0.2 führte beim Kompilieren `.c_str()` auf `const char*` aus; behoben in 0.0.3.
-- Ursprüngliche lokale `/config/tessera-plugins/`-Installation war falsch; Installationsweg ist GitHub-Branch.
-- Nachgerüstete Lautsprecher-Hardware verwendet die GPIO-Umstellung R21–R23; die Audio-YAML ist separat und darf nicht überschrieben werden.
-- v0.0.4 nutzt absichtlich die bereits funktionierende RTTTL-ID `guition_tone`. Ist sie nicht vorhanden, schlägt die Konfigurationsprüfung mit einer klaren unbekannten-ID-Fehlermeldung fehl.
-- Der vollständige ESPHome-Build kann hier mangels installierter Ziel-Firmware-Abhängigkeiten nicht ausgeführt werden. **Kompilierbarkeit und Laufzeit müssen auf dem Zielgerät bestätigt werden.**
-- RTTTL-Audio darf nicht gleichzeitig von mehreren Funktionen verwendet werden. Die Weckerfunktion hat noch keine Ressourcenkoordination mit anderen Plugins.
-- Nur ein Einmalwecker ist echt; nach Auslösen wird der Aktivierungsschalter ausgeschaltet. Kein Snooze/Offline-Neustart-Recovery. Nicht als alleinige Wecklösung verwenden.
+## Probleme / Umgehungen
+- **Schieberegler**: Umgestellt von zwei `number`-Entitäten auf `datetime: type: time`. Damit wird Home Assistant eine Uhrzeitauswahl anbieten; die Touch-Karte ändert Stunden/Minuten getrennt.
+- **Migration:** Alte Stunde/Minute-Werte werden nicht übernommen; die neue Uhrzeit startet bei 07:00. Aktivierung vor dem Update ausschalten und Uhrzeit danach kontrollieren.
+- **Lautsprecher:** Guition-Board wurde hardwareseitig für Audio umgerüstet. Das funktionierende Tessera-Override mit `guition_tone` bleibt Voraussetzung.
+- **Offline-Zeit:** Ohne gültige Uhrzeit nach Neustart kein verlässlicher Wecker; keine RTC-Hardware vorgesehen.
+- **Teststand:** Kein echter Firmware-Compiler/Hardware-Zugriff in dieser Umgebung; C++-Build auf Hilde über Tessera erforderlich.
 
 ## Installation
-1. Firmware/Override sichern; Audio-Override mit `guition_tone` bestehen lassen.
-2. `Tessera_AlarmClock_0.0.4.zip` entpacken und **alle enthaltenen Dateien/Ordner** in die Wurzel des Repository `Karlstahl1982/tessera-alarmclock` hochladen; Commit auf `main` erstellen.
-3. In Tessera: Plugins → Mit einem Link hinzufügen → Branch testen → Repository-URL und Branch `main` → Plugin lesen.
-4. Neue Version 0.0.4 dem Display Hilde zuordnen, Firmware aktualisieren.
-5. Home Assistant → ESPHome-Gerät Hilde → `AlarmClock Testalarm` drücken; Ton 15 Sekunden, mit Stoppen beenden.
-6. Einmalwecker über Stunde/Minute/Schalter für die nächste kommende Uhrzeit aktivieren, Audio und automatische Deaktivierung prüfen.
-7. Bei Fehlern letzte funktionsfähige v0.0.3 wiederherstellen und vollständiges Log weitergeben.
+1. **Wecker 1 deaktivieren**; Override-YAML und letzte funktionierende Firmware sichern.
+2. ZIP entpacken; **alle enthaltenen Dateien und Ordner direkt im GitHub-Repository-Stammverzeichnis** `Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen und ersetzen.
+3. Tessera → Plugins → *Mit einem Link hinzufügen* → *Branch testen* (`main`) → Plugin lesen, v0.0.5 für Hilde übernehmen.
+4. Firmware kompilieren; bei Fehler keine Installation, sondern Buildlog prüfen.
+5. Bei Erfolg installieren, `AlarmClock Wecker 1 Uhrzeit` in Home Assistant einstellen und im Touchdisplay testen.
+6. Erst danach den Wecker zu einer Testzeit aktivieren. Nicht als einzigen Wecker verwenden.
 
-## Versionshinweise
-- v0.0.4 ist eine **Entwicklungs- und Testversion**, keine zuverlässige Alarmuhr.
-- Keine Hardwareänderungen. Kein Eingriff in bestehende Tessera-Tiles oder Audio-Override.
+## Rollback
+Dateien von v0.0.4 in GitHub wiederherstellen, Plugin erneut einlesen und Firmware neu erstellen. Audio-Override unverändert.

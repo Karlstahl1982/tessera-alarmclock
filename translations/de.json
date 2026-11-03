@@ -17,11 +17,14 @@
     "enabled": "Wecker 1 aktiv",
     "test": "Testalarm (15 Sek.)",
     "stop": "Alarm stoppen",
-    "open_card": "Weckerübersicht"
+    "open_card": "Weckerübersicht",
+    "tap_edit": "Wecker 1 tippen: Uhrzeit einstellen",
+    "edit_hint": "Links - / rechts + tippen",
+    "back": "Zurück zur Übersicht"
   },
   "app": {
     "name": "AlarmClock",
-    "summary": "Erster lokal auslösender Einmalwecker mit 5 Plätzen.",
+    "summary": "Ein lokaler Einmalwecker mit Uhrzeit-Auswahl und 5 Plätzen.",
     "tile_name": "Nächster Wecker",
     "tile_example": "07:00",
     "card_name": "Fünf Wecker"

@@ -17,11 +17,14 @@
     "enabled": "Alarm 1 armed",
     "test": "Test sound (15 sec)",
     "stop": "Stop alarm",
-    "open_card": "Alarm overview"
+    "open_card": "Alarm overview",
+    "tap_edit": "Tap alarm 1 to set time",
+    "edit_hint": "Tap left - / right +",
+    "back": "Back to overview"
   },
   "app": {
     "name": "AlarmClock",
-    "summary": "First on-device single-shot alarm; 5 available slots.",
+    "summary": "One local single-shot alarm with time picker and five slots.",
     "tile_name": "Next alarm",
     "tile_example": "07:00",
     "card_name": "Five alarms"

@@ -83,21 +83,49 @@ class AlarmOverview : public tessera::Card {
     char line[100];
     char time[12];
     time_text(plugin_, time, sizeof(time));
-    std::snprintf(line, sizeof(line), "%s 1   %s  (%s)", plugin_->text("alarm"), time,
-                  plugin_->enabled() ? plugin_->text("on") : plugin_->text("off"));
-    ui::set_text(rows_[0], line);
-    for (int i = 1; i < 5; ++i) {
-      std::snprintf(line, sizeof(line), "%s %d   --:--", plugin_->text("alarm"), i + 1);
-      ui::set_text(rows_[i], line);
+    if (edit_) {
+      std::snprintf(line, sizeof(line), "%s 1: %s", plugin_->text("alarm"), time);
+      ui::set_text(rows_[0], line);
+      std::snprintf(line, sizeof(line), "-     %s: %02d     +", plugin_->text("hour"), plugin_->hour());
+      ui::set_text(rows_[1], line);
+      std::snprintf(line, sizeof(line), "-     %s: %02d     +", plugin_->text("minute"), plugin_->minute());
+      ui::set_text(rows_[2], line);
+      std::snprintf(line, sizeof(line), "%s: %s", plugin_->text("enabled"),
+                    plugin_->enabled() ? plugin_->text("on") : plugin_->text("off"));
+      ui::set_text(rows_[3], line);
+      ui::set_text(rows_[4], plugin_->text("back"));
+      ui::set_text(foot_, plugin_->text("edit_hint"));
+    } else {
+      std::snprintf(line, sizeof(line), "%s 1   %s  (%s)", plugin_->text("alarm"), time,
+                    plugin_->enabled() ? plugin_->text("on") : plugin_->text("off"));
+      ui::set_text(rows_[0], line);
+      for (int i = 1; i < 5; ++i) {
+        std::snprintf(line, sizeof(line), "%s %d   --:--", plugin_->text("alarm"), i + 1);
+        ui::set_text(rows_[i], line);
+      }
+      ui::set_text(foot_, plugin_->text(plugin_->ringing() ? "tap_stop" : "tap_edit"));
     }
-    ui::set_text(foot_, plugin_->text(plugin_->ringing() ? "tap_stop" : "tap_toggle"));
   }
   void on_tap() override {
-    const auto point = tessera::tap_point();
     if (plugin_->ringing()) {
       plugin_->stop_alarm();
-    } else if (point.y >= top_ && point.y < top_ + stride_) {
+      on_tick(0);
+      return;
+    }
+    const auto point = tessera::tap_point();
+    if (point.y < top_) return;
+    const int row = (point.y - top_) / stride_;
+    if (!edit_) {
+      if (row == 0) edit_ = true;
+    } else if (row == 1 || row == 2) {
+      // Left side decreases, right side increases; wrap around midnight/59.
+      const int delta = point.x < width_ / 2 ? -1 : 1;
+      if (row == 1) plugin_->adjust_hour(delta);
+      else plugin_->adjust_minute(delta);
+    } else if (row == 3) {
       plugin_->toggle();
+    } else if (row == 4) {
+      edit_ = false;
     }
     on_tick(0);
   }
@@ -110,13 +138,30 @@ class AlarmOverview : public tessera::Card {
   lv_obj_t *rows_[5]{};
   lv_obj_t *foot_{nullptr};
   int width_{0}, top_{0}, stride_{0};
+  bool edit_{false};
 };
 
 int AlarmClock::hour() const {
-  return hour_ && !std::isnan(hour_->state) ? static_cast<int>(hour_->state) : 7;
+  return alarm_time_ && alarm_time_->has_state() ? alarm_time_->hour : 7;
 }
 int AlarmClock::minute() const {
-  return minute_ && !std::isnan(minute_->state) ? static_cast<int>(minute_->state) : 0;
+  return alarm_time_ && alarm_time_->has_state() ? alarm_time_->minute : 0;
+}
+void AlarmClock::adjust_hour(int delta) {
+  if (!alarm_time_) return;
+  const int h = (hour() + delta + 24) % 24;
+  auto call = alarm_time_->make_call();
+  call.set_time(static_cast<uint8_t>(h), static_cast<uint8_t>(minute()), 0);
+  call.perform();
+  tessera::refresh();
+}
+void AlarmClock::adjust_minute(int delta) {
+  if (!alarm_time_) return;
+  const int m = (minute() + delta + 60) % 60;
+  auto call = alarm_time_->make_call();
+  call.set_time(static_cast<uint8_t>(hour()), static_cast<uint8_t>(m), 0);
+  call.perform();
+  tessera::refresh();
 }
 bool AlarmClock::enabled() const { return enabled_ && enabled_->state; }
 void AlarmClock::toggle() {
@@ -165,10 +210,6 @@ void AlarmClock::on_interval(uint32_t now_ms) {
 }
 bool AlarmClock::settings(tessera::SettingsPage &page) {
   page.icon = "\U000F0020";
-  page.number(text("hour"), 0, 23, 1, "", [this] { return hour(); },
-              [this](int v) { auto call = hour_->make_call(); call.set_value(v); call.perform(); });
-  page.number(text("minute"), 0, 59, 1, "", [this] { return minute(); },
-              [this](int v) { auto call = minute_->make_call(); call.set_value(v); call.perform(); });
   page.toggle(text("enabled"), [this] { return enabled(); },
               [this](bool on) { if (on) enabled_->turn_on(); else enabled_->turn_off(); });
   page.card(text("open_card"), "\U000F0020", "overview");

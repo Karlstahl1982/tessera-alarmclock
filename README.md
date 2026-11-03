@@ -1,39 +1,40 @@
-# Tessera AlarmClock v0.0.4
+# Tessera AlarmClock v0.0.5
 
-**Erste funktionsfähige Teststufe – noch kein verlässlicher Alltagswecker.**
+Schlanker Test-Wecker für **Hilde / Guition ESP32-4848S040**. **Noch kein verlässlicher Alltagswecker.**
 
-## Funktionsumfang
-- Ein **einmaliger Alarm beim nächsten Auftreten der gewählten Uhrzeit** mit ESP32-interner Überwachung.
-- Stunde, Minute und Aktivierung als ESPHome-Entitäten in Home Assistant und in **Tessera auf dem Display → Einstellungen → Plugins → AlarmClock**.
-- Uhrzeit sowie Aktivierung werden auf dem ESP32 dauerhaft gespeichert; der Alarm ist zunächst deaktiviert.
-- Bei Auslösung deaktiviert sich der Einmalwecker; der RTTTL-Ton wird maximal 5 Minuten wiederholt. 
-- Ein eigener **15-Sekunden-Testalarm** und ein **Alarm stoppen**-Button in Home Assistant.
-- Auf dem Display zeigt die Kachel den aktiven Wecker. In der Detailansicht aktiviert/deaktiviert ein Tipp auf die erste Zeile den Wecker; während eines aktiven Alarms stoppt ein Tipp den Alarm.
-- Die Plätze 2 bis 5 bleiben Platzhalter, sodass das Plugin klein bleibt.
+## Was neu ist
+- **Home Assistant:** Statt zwei Zahlen-Schiebereglern ein natives `time`-Feld (HH:MM) namens `AlarmClock Wecker 1 Uhrzeit`.
+- **Touchdisplay:** AlarmClock-Kachel → erste Zeile (Wecker 1) → links auf `-` oder rechts auf `+` in den Zeilen Stunde und Minute tippen. Die Einstellung ist sofort lokal gespeichert.
+- Aktivierung in derselben Ansicht und Home Assistant weiterhin möglich.
+- Testton, Stoppen und 5-Minuten-Grenze unverändert.
+- Vier zusätzliche Plätze bleiben Platzhalter.
 
-## Technische Voraussetzungen
+## Achtung – Migration
+Die alten `number`-Entitäten für Stunde/Minute werden durch eine neue `datetime`-Entität ersetzt. **Die bisher eingestellte Uhrzeit wird nicht übernommen.** Nach der Aktualisierung neu einstellen; Standard ist **07:00**. In HA eventuell alte, nicht mehr verfügbare Zahlen-Entitäten entfernen, wenn sie noch angezeigt werden. Der Aktivierungsschalter bleibt erhalten; vor dem Update **deaktivieren**, damit die neue Standard-Uhrzeit nicht unerwartet auslöst.
 
-- Hilde (Guition ESP32-4848S040), bereits funktionierende Tessera-Installation; Plugin API mindestens 0.16.
-- Audio-Override-YAML enthält **`rtttl: id: guition_tone`** und die vorhandene I²S-Ausgabe. Diese Datei **nicht entfernen**. Der Stand 0.0.1 oder 0.0.2 des Lautsprechertests bietet diesen ID.
-- Gültige Uhrzeit: Tessera stellt `epoch()` bereit. Ohne anfänglich übernommene Uhrzeit wird nicht geweckt. Nach HA-/WLAN-Ausfall bei weiterlaufendem Board funktioniert die zuvor gestellte Uhr weiter, muss aber noch praktisch getestet werden.
-- Die Alarmauslösung ist derzeit auf den exakten Minutenwechsel ausgelegt: **keine 5-Minuten-Nachholung**, keine Wochentage, kein Snooze, kein Vollbild-Popup und kein Alarm bei fehlender Gerätezeit. Noch nicht als alleinigen Wecker verwenden!
+## Voraussetzungen
+- Tessera mit Plugin-API mindestens 0.16, ESPHome 2026.9.0.
+- Funktionsfähiger Audio-Override mit `rtttl: id: guition_tone`.
+- Vorhandenes Plugin v0.0.4 auf Hilde oder eine kompatible Erstinstallation.
 
-## Update / Installation
+## Installation / Test
+1. **Wecker 1 deaktivieren** und bestehende Override-YAML sichern.
+2. ZIP entpacken und den gesamten Inhalt direkt in die Wurzel von https://github.com/Karlstahl1982/tessera-alarmclock auf `main` hochladen; vorhandene Dateien ersetzen und Commit erstellen.
+3. Tessera → Plugins → *Mit einem Link hinzufügen* → *Branch testen* → Repository und `main` → *Plugin lesen*; das Plugin auf Hilde aktualisieren.
+4. ESPHome-Kompilierung starten. Bei Compilerfehler: **nicht flashen**, Log prüfen, v0.0.4 weiter nutzen.
+5. Nach erfolgreicher Kompilierung Firmware auf Hilde aktualisieren.
+6. In Home Assistant unter dem ESPHome-Gerät Hilde die neue Uhrzeit-Entität `AlarmClock Wecker 1 Uhrzeit` auf z. B. 07:15 setzen; auf dem Touchdisplay die Kachel öffnen und kontrollieren, ob 07:15 angezeigt wird.
+7. Testweise auf dem Touchdisplay Stunde oder Minute um 1 ändern; prüfen, ob Home Assistant die Uhrzeit übernimmt.
+8. Erst danach den Wecker für einen ungefährlichen Funktionstest aktivieren. **Nicht als einzigen Wecker verwenden.**
 
-1. Die letzte funktionierende Firmware sowie `hilde.local.yaml` sichern.
-2. Das ZIP entpacken; **alle Dateien und Ordner unmittelbar in die Wurzel** von `https://github.com/Karlstahl1982/tessera-alarmclock` auf `main` hochladen; vorhandene Dateien ersetzen; Commit.
-3. Tessera → Plugins → Mit einem Link hinzufügen → Branch testen → Repository `https://github.com/Karlstahl1982/tessera-alarmclock`, Branch `main` → Plugin lesen.
-4. Plugin auf **Hilde** aktualisieren; prüfen, dass **0.0.4** und ein neuer GitHub-Commit verwendet werden.
-5. Firmware erstellen und installieren. Wenn der Build scheitert, die letzte Firmware unverändert lassen und das Buildlog weitergeben.
-6. Home Assistant → Einstellungen → Geräte & Dienste → ESPHome → Hilde: `AlarmClock Testalarm` drücken. Er soll rund 15 Sekunden klingen oder früher mit `AlarmClock Alarm stoppen` enden.
-7. Danach `AlarmClock Wecker 1 Stunde` / `Minute` auf eine kommende Uhrzeit stellen und `AlarmClock Wecker 1 aktiv` einschalten. Warten, bis die Uhrzeit erreicht ist; der Einmalwecker wird danach automatisch deaktiviert.
-
-**Bei der Installation nur Schritt 1–4 durchführen, danach die Firmware bauen und das Ergebnis melden.**
+## Grenzen
+- Nur ein Einmalwecker aktiv; keine Wochentage, kein Snooze, kein Vollbild-Alarm, keine 5-Minuten-Nachholung.
+- Ohne gültige Systemzeit keine Alarmauslösung; bei WLAN-Verlust im laufenden Betrieb hängt Offline-Verhalten von Tessera-Uhr ab.
+- Compiler und Hardware wurden hier nicht ausgeführt; YAML/JSON/Python und Paketstruktur wurden geprüft.
 
 ## Rückbau
-
-AlarmClock 0.0.3 im Repository wiederherstellen, in Tessera Branch neu laden und Firmware zurückbauen. Die Audio-Override-YAML nicht verändern.
+Die GitHub-Dateien aus v0.0.4 zurückspielen, in Tessera erneut importieren und die vorherige Firmware installieren. Die Audio-Override-YAML unverändert lassen.
 
 ## Quellen
-- Tessera Plugin API: https://github.com/MaxGramser/tessera-plugins/blob/main/docs/FIRMWARE_API.md
-- ESPHome RTTTL: https://esphome.io/components/rtttl/
+- https://esphome.io/components/datetime/template/
+- https://github.com/MaxGramser/tessera-plugins/blob/main/docs/FIRMWARE_API.md
