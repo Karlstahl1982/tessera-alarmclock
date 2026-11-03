@@ -1,4 +1,4 @@
-# Tessera AlarmClock 0.3.0 | UX-Wizard, 5 local alarms, HA card
+# Tessera AlarmClock 0.3.1 | UX-Wizard, 5 local alarms, HA card
 datetime:
 - platform: template
   id: ac_time_1

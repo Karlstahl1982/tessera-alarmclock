@@ -206,26 +206,46 @@ class AlarmOverview final : public tessera::Card {
           }
         } else if (y>=h_-ui::px(96) && y<btn_y) screen_=CONFIRM_DELETE;
       } else if (screen_ == TYPE) {
-        const int row = (y-ui::px(62)) / std::max(1, option_rh_());
-        if (row >= 0 && row <= 2) draft_.mode = row;
+        const int top=detail_top_(), gap=ui::px(9), row_h=type_card_height_();
+        if (y>=top) {
+          const int row=(y-top)/(row_h+gap);
+          const int yy=top+row*(row_h+gap);
+          if (row>=0 && row<3 && y>=yy && y<yy+row_h) draft_.mode=row;
+        }
       } else if (screen_ == DAYS) {
-        const int col = (x * 4) / std::max(1,w_);
-        const int row = (y-ui::px(70))/std::max(1, option_rh_());
-        const int day = row*4 + col;
-        if (day>=0 && day<7) draft_.days ^= 1u<<day;
+        const int top=ui::px(104), gap=ui::px(12);
+        const int cw=(w_-ui::px(28)-3*gap)/4;
+        const int col=(x-ui::px(14))/(cw+gap);
+        const int row=(y-top)/(ui::px(64)+gap);
+        if (col>=0 && col<4 && row>=0 && row<2) {
+          int xx=ui::px(14)+col*(cw+gap), yy=top+row*(ui::px(64)+gap);
+          const int day=row*4+col;
+          if(day<7 && x>=xx && x<xx+cw && y>=yy && y<yy+ui::px(64)) draft_.days ^= 1u<<day;
+        }
       } else if (screen_ == SOUND) {
-        if (y>=h_-ui::px(94) && y<h_-ui::px(52)) p_->preview_tone(draft_.tone);
-        else {
-          const int rh = std::max(1,std::min(option_rh_(),(h_-ui::px(157))/5));
-          const int row = (y-ui::px(58))/rh;
-          if (y>=ui::px(58) && row>=0 && row<5) draft_.tone=row;
+        const int top=detail_top_(), gap=ui::px(8), card_h=detail_grid_height_();
+        const int card_w=(w_-ui::px(16)-gap)/2;
+        const int col=(x-ui::px(8))/(card_w+gap);
+        const int row=(y-top)/(card_h+gap);
+        const int xx=ui::px(8)+col*(card_w+gap), yy=top+row*(card_h+gap);
+        const int index=row*2+col;
+        if(col>=0 && col<2 && row>=0 && row<3 && x>=xx && x<xx+card_w && y>=yy && y<yy+card_h) {
+          if(index<5) draft_.tone=index;
+          else p_->preview_tone(draft_.tone);
         }
       } else if (screen_ == OPTIONS) {
-        const int row=(y-ui::px(66))/std::max(1,option_rh_());
-        if (row==0) cycle_name_();
-        else if (row==1) draft_.volume=clamp_int(draft_.volume+(x<w_/2?-10:10),10,100);
-        else if (row==2) draft_.snooze=draft_.snooze==5?10:5;
-        else if (row==3) draft_.active=!draft_.active;
+        const int top=detail_top_(), gap=ui::px(8), ch=options_card_height_();
+        const int cw=(w_-ui::px(16)-gap)/2;
+        const int col=(x-ui::px(8))/(cw+gap), row=(y-top)/(ch+gap);
+        const int xx=ui::px(8)+col*(cw+gap), yy=top+row*(ch+gap);
+        if(col>=0 && col<2 && row>=0 && row<2 && x>=xx && x<xx+cw && y>=yy && y<yy+ch) {
+          switch(row*2+col) {
+            case 0: cycle_name_(); break;
+            case 1: draft_.volume=clamp_int(draft_.volume+(x<xx+cw/2?-10:10),10,100); break;
+            case 2: draft_.snooze=draft_.snooze==5?10:5; break;
+            case 3: draft_.active=!draft_.active; break;
+          }
+        }
       } else if (screen_==REVIEW && !new_ && y>=h_-ui::px(101) && y<h_-ui::px(52)) {
         screen_=CONFIRM_DELETE;
       }
@@ -241,7 +261,7 @@ class AlarmOverview final : public tessera::Card {
     bool active{true};
     std::string name{"Wecker"};
   } draft_{};
-  int list_top_() const { return ui::px(63); }
+  int list_top_() const { return ui::px(53); }
   int list_rh_() const { return std::max(1, (h_-list_top_()-ui::px(58))/6); }
   int option_rh_() const { return std::max(ui::px(35),(h_-ui::px(140))/5); }
   void begin_edit_(int slot) {
@@ -399,7 +419,8 @@ class AlarmOverview final : public tessera::Card {
   void paint_visual_(VisualCard &c,int x,int y,int w,int h,
                      const char *title,const char *value,const char *meta,
                      const char *status,bool active,bool add=false,bool editor=false,int icon_mode=0) {
-    // Each card has its own visible boundary, icon disk and analog clock marks.
+    // Layout zones are disjoint: header 0..36, clock 38..(h-28), footer (h-25)..h.
+    // This fixes the v0.3.0 title/time overlap on the 480x480 Guition.
     lv_obj_set_pos(c.surface,x,y);
     lv_obj_set_size(c.surface,w,h);
     lv_obj_set_style_radius(c.surface,ui::px(14),0);
@@ -407,73 +428,92 @@ class AlarmOverview final : public tessera::Card {
     lv_obj_set_style_bg_opa(c.surface,LV_OPA_COVER,0);
     lv_obj_set_style_border_width(c.surface,active?ui::px(2):ui::px(1),0);
     lv_obj_set_style_border_color(c.surface,ui::color(active?theme::ACCENT:theme::MUTED),0);
-    const int disc=ui::px(editor?27:26);
-    const int circle_x=x+ui::px(11), circle_y=y+ui::px(9);
+    const int d=ui::px(24), circle_x=x+ui::px(10), circle_y=y+ui::px(8);
     lv_obj_set_pos(c.disc,circle_x,circle_y);
-    lv_obj_set_size(c.disc,disc,disc);
-    lv_obj_set_style_radius(c.disc,disc/2,0);
+    lv_obj_set_size(c.disc,d,d);
+    lv_obj_set_style_radius(c.disc,d/2,0);
     lv_obj_set_style_bg_opa(c.disc,LV_OPA_COVER,0);
     lv_obj_set_style_bg_color(c.disc,ui::color(active?theme::ACCENT:theme::MUTED),0);
-    const int mid_x=circle_x+disc/2, mid_y=circle_y+disc/2;
-    if (icon_mode==1) { // repetition: parallel cycle strokes
-      lv_obj_set_pos(c.hand_a,circle_x+ui::px(6),circle_y+ui::px(8));
+    const int mx=circle_x+d/2, my=circle_y+d/2;
+    if(icon_mode==1) { // repeating: two horizontal strokes
+      lv_obj_set_pos(c.hand_a,circle_x+ui::px(5),circle_y+ui::px(7));
       lv_obj_set_size(c.hand_a,ui::px(14),ui::px(2));
-      lv_obj_set_pos(c.hand_b,circle_x+ui::px(6),circle_y+ui::px(17));
+      lv_obj_set_pos(c.hand_b,circle_x+ui::px(5),circle_y+ui::px(15));
       lv_obj_set_size(c.hand_b,ui::px(14),ui::px(2));
-    } else if (icon_mode==2) { // sound: equalizer bars
-      lv_obj_set_pos(c.hand_a,circle_x+ui::px(8),circle_y+ui::px(6));
-      lv_obj_set_size(c.hand_a,ui::px(3),ui::px(16));
-      lv_obj_set_pos(c.hand_b,circle_x+ui::px(16),circle_y+ui::px(10));
+    } else if(icon_mode==2) { // sound: equalizer
+      lv_obj_set_pos(c.hand_a,circle_x+ui::px(7),circle_y+ui::px(5));
+      lv_obj_set_size(c.hand_a,ui::px(3),ui::px(15));
+      lv_obj_set_pos(c.hand_b,circle_x+ui::px(14),circle_y+ui::px(9));
       lv_obj_set_size(c.hand_b,ui::px(3),ui::px(9));
-    } else if (icon_mode==3) { // settings: slider handle
-      lv_obj_set_pos(c.hand_a,circle_x+ui::px(6),mid_y-ui::px(1));
-      lv_obj_set_size(c.hand_a,ui::px(16),ui::px(2));
-      lv_obj_set_pos(c.hand_b,mid_x-ui::px(2),circle_y+ui::px(7));
+    } else if(icon_mode==3) { // settings: slider
+      lv_obj_set_pos(c.hand_a,circle_x+ui::px(5),my-ui::px(1));
+      lv_obj_set_size(c.hand_a,ui::px(14),ui::px(2));
+      lv_obj_set_pos(c.hand_b,mx-ui::px(2),circle_y+ui::px(6));
       lv_obj_set_size(c.hand_b,ui::px(4),ui::px(12));
-    } else { // clock hands
-      lv_obj_set_pos(c.hand_a,mid_x-ui::px(1),circle_y+ui::px(5));
-      lv_obj_set_size(c.hand_a,ui::px(2),ui::px(9));
-      lv_obj_set_pos(c.hand_b,mid_x,mid_y-ui::px(1));
-      lv_obj_set_size(c.hand_b,ui::px(7),ui::px(2));
+    } else { // clock: hands
+      lv_obj_set_pos(c.hand_a,mx-ui::px(1),circle_y+ui::px(5));
+      lv_obj_set_size(c.hand_a,ui::px(2),ui::px(8));
+      lv_obj_set_pos(c.hand_b,mx,my-ui::px(1));
+      lv_obj_set_size(c.hand_b,ui::px(6),ui::px(2));
     }
     for (auto *line:{c.hand_a,c.hand_b}) {
       lv_obj_set_style_bg_opa(line,LV_OPA_COVER,0);
       lv_obj_set_style_bg_color(line,ui::color(theme::ON_ACCENT),0);
       lv_obj_set_style_radius(line,ui::px(1),0);
     }
-    // Primary values are large; explanatory copy is deliberately compact.
-    if (add) {
-      place_label(c.title,x+ui::px(6),y+h-ui::px(32),w-ui::px(12),ui::px(27),title);
-      place_label(c.value,x+ui::px(4),y+h/2-ui::px(31),w-ui::px(8),ui::px(58),"+");
-      lv_obj_set_style_text_font(c.value,ui::font(Font::VALUE),0);
+    if(add) {
+      // One strong central plus with a short caption below. No overlapping icon.
       toggle_hidden(c.disc,false);toggle_hidden(c.hand_a,false);toggle_hidden(c.hand_b,false);
+      place_label(c.value,x+ui::px(6),y+h/2-ui::px(31),w-ui::px(12),ui::px(58),"+");
+      lv_obj_set_style_text_font(c.value,ui::font(Font::VALUE),0);
+      place_label(c.title,x+ui::px(5),y+h-ui::px(32),w-ui::px(10),ui::px(24),title);
+      lv_obj_set_style_text_font(c.title,ui::font(Font::BODY),0);
       toggle_hidden(c.meta,false);toggle_hidden(c.status,false);
     } else if(editor) {
-      place_label(c.title,x+ui::px(42),y+ui::px(3),w-ui::px(48),ui::px(22),title);
-      place_label(c.value,x+ui::px(7),y+h-ui::px(30),w-ui::px(14),ui::px(27),value);
-      lv_obj_set_style_text_font(c.value,ui::font(Font::BODY_LARGE),0);
+      // Graphical settings card: short heading by icon and value on its own line.
+      const bool compact_editor=h<ui::px(90);
+      place_label(c.title,x+ui::px(39),y+(compact_editor?ui::px(2):ui::px(8)),
+                  w-ui::px(45),compact_editor?ui::px(24):ui::px(29),title);
+      lv_obj_set_style_text_font(c.title,ui::font(Font::BODY),0);
+      place_label(c.value,x+ui::px(8),y+(compact_editor?ui::px(26):std::max(ui::px(42),h-ui::px(48))),
+                  w-ui::px(16),compact_editor?ui::px(26):ui::px(39),value);
+      lv_obj_set_style_text_font(c.value,ui::font(compact_editor?Font::BODY:Font::BODY_LARGE),0);
       toggle_hidden(c.meta,false);toggle_hidden(c.status,false);
     } else {
-      place_label(c.value,x+ui::px(5),y+ui::px(24),w-ui::px(10),ui::px(36),value);
-      lv_obj_set_style_text_font(c.value,ui::font(Font::VALUE),0);
-      place_label(c.title,x+ui::px(7),y+h-(h>=ui::px(91)?ui::px(48):ui::px(27)),w-ui::px(14),ui::px(23),title);
-      lv_obj_set_style_text_font(c.title,ui::font(Font::BODY_LARGE),0);
-      if (h>=ui::px(91)) {
-        place_label(c.meta,x+ui::px(7),y+h-ui::px(23),w-ui::px(14),ui::px(20),meta);
+      const int status_width=(status && *status)?ui::px(43):0;
+      // Header: name always above the time; status gets its own top-right pill.
+      const int name_x=x+ui::px(39);
+      const int name_w=std::max(ui::px(45),w-ui::px(46)-status_width);
+      const bool compact_clock=h<ui::px(112);
+      place_label(c.title,name_x,y+(compact_clock?ui::px(4):ui::px(7)),name_w,
+                  compact_clock?ui::px(24):ui::px(27),title);
+      lv_obj_set_style_text_font(c.title,ui::font(Font::BODY),0);
+      // Center clock has a *separate* band; no label intersects its bounding box.
+      const int clock_top=compact_clock?ui::px(31):ui::px(36);
+      const int clock_h=compact_clock?std::max(ui::px(20),h-ui::px(61)):h-ui::px(72);
+      place_label(c.value,x+ui::px(6),y+clock_top,w-ui::px(12),clock_h,value);
+      lv_obj_set_style_text_font(c.value,ui::font(compact_clock?Font::BODY_LARGE:Font::VALUE),0);
+      if(h>=ui::px(91)) {
+        place_label(c.meta,x+ui::px(8),y+h-ui::px(26),w-ui::px(16),ui::px(21),meta);
+        lv_obj_set_style_text_font(c.meta,ui::font(Font::BODY),0);
       } else toggle_hidden(c.meta,false);
-      if (status && *status) {
-        const int bw=ui::px(43);
-        place_label(c.status,x+w-bw-ui::px(7),y+ui::px(8),bw,ui::px(26),status);
+      if(status_width) {
+        place_label(c.status,x+w-status_width-ui::px(7),y+ui::px(8),status_width,ui::px(25),status);
+        lv_obj_set_style_text_font(c.status,ui::font(Font::BODY),0);
         lv_obj_set_style_bg_opa(c.status,LV_OPA_COVER,0);
         lv_obj_set_style_bg_color(c.status,ui::color(active?theme::ACCENT:theme::CARD),0);
         lv_obj_set_style_text_color(c.status,ui::color(active?theme::ON_ACCENT:theme::MUTED),0);
-        lv_obj_set_style_radius(c.status,ui::px(10),0);
+        lv_obj_set_style_radius(c.status,ui::px(9),0);
       } else toggle_hidden(c.status,false);
     }
   }
   int list_card_height_() const {
     return std::max(1,(h_-list_top_()-ui::px(16)-2*ui::px(8))/3);
   }
+  int detail_top_() const { return ui::px(70); }
+  int type_card_height_() const { return std::max(1,(h_-detail_top_()-ui::px(62)-2*ui::px(9))/3); }
+  int detail_grid_height_() const { return std::max(1,(h_-detail_top_()-ui::px(61)-2*ui::px(8))/3); }
+  int options_card_height_() const { return std::max(1,(h_-detail_top_()-ui::px(63)-ui::px(8))/2); }
   int edit_grid_top_() const { return ui::px(139); }
   int edit_grid_bottom_() const { return h_-ui::px(103); }
   int edit_card_height_() const {
@@ -510,7 +550,7 @@ class AlarmOverview final : public tessera::Card {
     hide_all_();
     char b[140];
     if (screen_==LIST) {
-      heading_(p_->text("list_title"),p_->text("grid_hint"));
+      heading_(p_->text("list_title"),"");
       listed_=0;
       for(int i=0;i<AlarmClock::COUNT;++i)
         if(p_->occupied(i)) visible_[listed_++]=i;
@@ -555,14 +595,13 @@ class AlarmOverview final : public tessera::Card {
       case CONFIRM_DELETE: step=p_->text("delete_alarm");break;
       default:break;
     }
-    std::snprintf(b,sizeof(b),"%s · %s",new_?p_->text("add_alarm"):p_->text("edit_alarm"),step);
-    heading_(b,draft_.name.c_str());
+    heading_(step,draft_.name.c_str());
     footer_((screen_==REVIEW || screen_==EDIT)?p_->text("save"):(screen_==CONFIRM_DELETE)?p_->text("delete_alarm"):p_->text("continue"));
     if (screen_==EDIT) {
-      heading_(p_->text("edit_short"),draft_.name.c_str());
+      heading_(draft_.name.c_str(),p_->text("edit_short"));
       // Prominent clock hero; tap time to open wheels, tap status to toggle.
       std::snprintf(b,sizeof(b),"%02d:%02d",draft_.hour,draft_.minute);
-      place_label(rows_[7],ui::px(12),ui::px(58),w_-ui::px(108),ui::px(68),b);
+      place_label(rows_[7],ui::px(12),ui::px(61),w_-ui::px(111),ui::px(61),b);
       lv_obj_set_style_text_font(rows_[7],ui::font(Font::VALUE),0);
       toggle_hidden(rows_[7],true);
       chip_(rows_[8],w_-ui::px(88),ui::px(70),ui::px(79),ui::px(39),
@@ -591,17 +630,24 @@ class AlarmOverview final : public tessera::Card {
       chip_(rows_[6],ui::px(27),h_-ui::px(96),w_-ui::px(54),ui::px(40),p_->text("delete_alarm"));
       toggle_hidden(rows_[6],true);
     } else if(screen_==TYPE) {
+      const int top=detail_top_(),gap=ui::px(9),rh=type_card_height_();
       for(int i=0;i<3;++i) {
-        const char *mode=i==0?p_->text("mode_next"):i==1?p_->text("mode_date"):p_->text("mode_weekly");
-        chip_(rows_[i],ui::px(4),ui::px(62)+i*option_rh_(),w_-ui::px(8),option_rh_()-ui::px(5),mode,i==draft_.mode);
-        toggle_hidden(rows_[i],true);
+        auto &c=list_cards_[i]; show_visual_(c,true);
+        const char *name=i==0?p_->text("grid_once"):i==1?p_->text("grid_once_date"):p_->text("grid_weekly");
+        const char *info=i==0?p_->text("mode_next"):i==1?p_->text("mode_date"):p_->text("step_days");
+        paint_visual_(c,ui::px(12),top+i*(rh+gap),w_-ui::px(24),rh,name,info,"","",i==draft_.mode,false,true,i==2?1:0);
       }
     } else if (screen_==TIME || screen_==DATE) {
       const bool is_time=screen_==TIME;
       const int count=is_time?2:3;
       const int rw=(w_-ui::px(20))/count;
-      const int rh=std::min(ui::px(163),std::max(ui::px(90),h_-ui::px(152)));
-      const int ry=std::max(ui::px(62), (h_-rh)/2-ui::px(8));
+      const int rh=std::min(ui::px(168),std::max(ui::px(78),h_-ui::px(179)));
+      const int ry=std::max(ui::px(104), (h_-rh)/2+ui::px(5));
+      if(is_time) std::snprintf(b,sizeof(b),"%02d : %02d",draft_.hour,draft_.minute);
+      else std::snprintf(b,sizeof(b),"%02d.%02d.%04d",draft_.day,draft_.month,draft_.year);
+      place_label(rows_[0],ui::px(8),ui::px(59),w_-ui::px(16),ui::px(42),b);
+      lv_obj_set_style_text_font(rows_[0],ui::font(Font::BODY_LARGE),0);
+      toggle_hidden(rows_[0],true);
       for(int j=0;j<count;++j) {
         lv_obj_t *r=is_time?(j==0?hour_:minute_):(j==0?day_:j==1?month_:year_);
         lv_obj_set_pos(r,ui::px(8)+j*rw,ry);
@@ -610,44 +656,72 @@ class AlarmOverview final : public tessera::Card {
         toggle_hidden(r,true);
       }
     } else if(screen_==DAYS) {
+      // Two rows of tactile weekday chips, selected days highlighted.
+      const int top=ui::px(104),gap=ui::px(12);
+      const int cw=(w_-ui::px(28)-3*gap)/4;
       for(int i=0;i<7;++i) {
         const int col=i%4,row=i/4;
-        chip_(days_[i],col*w_/4+ui::px(3),ui::px(78)+row*option_rh_(),w_/4-ui::px(6),option_rh_()-ui::px(6),DAY_ABBR[i],(draft_.days&(1<<i))!=0);
+        chip_(days_[i],ui::px(14)+col*(cw+gap),top+row*(ui::px(64)+gap),cw,ui::px(64),DAY_ABBR[i],(draft_.days&(1<<i))!=0);
+        lv_obj_set_style_radius(days_[i],ui::px(23),0);
         toggle_hidden(days_[i],true);
       }
+      place_label(rows_[0],ui::px(12),ui::px(270),w_-ui::px(24),ui::px(36),p_->text("days_select"));
+      toggle_hidden(rows_[0],true);
     } else if(screen_==SOUND) {
-      const int rh=std::max(ui::px(24),std::min(option_rh_(),(h_-ui::px(157))/5));
-      for(int i=0;i<5;++i) {
-        const char *tone=p_->text(i==0?"tone_classic":i==1?"tone_gentle":i==2?"tone_digital":i==3?"tone_sunrise":"tone_urgent");
-        chip_(rows_[i],ui::px(3),ui::px(58)+i*rh,w_-ui::px(6),rh-ui::px(3),tone,draft_.tone==i);
-        toggle_hidden(rows_[i],true);
+      const int top=detail_top_(),gap=ui::px(8);
+      const int cw=(w_-ui::px(16)-gap)/2,ch=detail_grid_height_();
+      for(int n=0;n<6;++n) {
+        auto &c=list_cards_[n]; show_visual_(c,true);
+        const bool preview=n==5;
+        const char *tone=preview?p_->text("preview_short"):
+            p_->text(n==0?"tone_classic":n==1?"tone_gentle":n==2?"tone_digital":n==3?"tone_sunrise":"tone_urgent");
+        const char *subtitle=preview?p_->text("preview_detail"):
+            p_->text(n==0?"tone_classic_hint":n==1?"tone_gentle_hint":n==2?"tone_digital_hint":n==3?"tone_sunrise_hint":"tone_urgent_hint");
+        paint_visual_(c,ui::px(8)+(n%2)*(cw+gap),top+(n/2)*(ch+gap),cw,ch,tone,subtitle,"","",
+                      preview || draft_.tone==n,false,true,2);
       }
-      chip_(rows_[6],ui::px(25),h_-ui::px(96),w_-ui::px(50),ui::px(40),p_->text("preview_tone"));
-      toggle_hidden(rows_[6],true);
     } else if(screen_==OPTIONS) {
-      std::snprintf(b,sizeof(b),"%s: %s",p_->text("name"),draft_.name.c_str());
-      chip_(rows_[0],ui::px(3),ui::px(66),w_-ui::px(6),option_rh_()-ui::px(4),b);
-      std::snprintf(b,sizeof(b),"−     %s: %d%%     +",p_->text("volume"),draft_.volume);
-      chip_(rows_[1],ui::px(3),ui::px(66)+option_rh_(),w_-ui::px(6),option_rh_()-ui::px(4),b);
-      std::snprintf(b,sizeof(b),"%s: %d min",p_->text("snooze"),draft_.snooze);
-      chip_(rows_[2],ui::px(3),ui::px(66)+2*option_rh_(),w_-ui::px(6),option_rh_()-ui::px(4),b);
-      std::snprintf(b,sizeof(b),"%s: %s",p_->text("enabled"),draft_.active?p_->text("on"):p_->text("off"));
-      chip_(rows_[3],ui::px(3),ui::px(66)+3*option_rh_(),w_-ui::px(6),option_rh_()-ui::px(4),b,draft_.active);
-      for(int i=0;i<4;++i) toggle_hidden(rows_[i],true);
+      const int top=detail_top_(),gap=ui::px(8);
+      const int cw=(w_-ui::px(16)-gap)/2,ch=options_card_height_();
+      char values[4][52];
+      std::snprintf(values[0],sizeof(values[0]),"%s",draft_.name.c_str());
+      std::snprintf(values[1],sizeof(values[1]),"-  %d%%  +",draft_.volume);
+      std::snprintf(values[2],sizeof(values[2]),"%d min",draft_.snooze);
+      std::snprintf(values[3],sizeof(values[3]),"%s",draft_.active?p_->text("grid_on"):p_->text("grid_off"));
+      const char *titles[4]={p_->text("grid_name"),p_->text("volume"),p_->text("snooze"),p_->text("enabled")};
+      for(int n=0;n<4;++n) {
+        auto &c=list_cards_[n];show_visual_(c,true);
+        paint_visual_(c,ui::px(8)+(n%2)*(cw+gap),top+(n/2)*(ch+gap),cw,ch,titles[n],values[n],"","",
+                      n==3?draft_.active:true,false,true,n==1?3:0);
+      }
     } else if(screen_==REVIEW) {
-      std::snprintf(b,sizeof(b),"%02d:%02d  ·  %s",draft_.hour,draft_.minute,draft_.name.c_str());
-      chip_(rows_[0],ui::px(2),ui::px(62),w_-ui::px(4),ui::px(43),b,true);
-      const char *mode=draft_.mode==0?p_->text("mode_next"):draft_.mode==1?p_->text("mode_date"):p_->text("mode_weekly");
-      chip_(rows_[1],ui::px(2),ui::px(109),w_-ui::px(4),ui::px(39),mode);
-      std::snprintf(b,sizeof(b),"%s: %d%%  |  %s: %d min",p_->text("volume"),draft_.volume,p_->text("snooze"),draft_.snooze);
-      chip_(rows_[2],ui::px(2),ui::px(152),w_-ui::px(4),ui::px(39),b);
-      std::snprintf(b,sizeof(b),"%s: %s",p_->text("enabled"),draft_.active?p_->text("on"):p_->text("off"));
-      chip_(rows_[3],ui::px(2),ui::px(195),w_-ui::px(4),ui::px(39),b);
-      for(int i=0;i<4;++i) toggle_hidden(rows_[i],true);
+      std::snprintf(b,sizeof(b),"%02d:%02d",draft_.hour,draft_.minute);
+      place_label(rows_[7],ui::px(10),ui::px(60),w_-ui::px(20),ui::px(70),b);
+      lv_obj_set_style_text_font(rows_[7],ui::font(Font::VALUE),0);
+      toggle_hidden(rows_[7],true);
+      const char *titles[4]={p_->text("grid_repeat"),p_->text("grid_tone"),p_->text("volume"),p_->text("snooze")};
+      char vals[4][56];
+      const char *mode=draft_.mode==0?p_->text("grid_once"):draft_.mode==1?p_->text("grid_once_date"):p_->text("grid_weekly");
+      const char *tone=p_->text(draft_.tone==0?"tone_classic":draft_.tone==1?"tone_gentle":
+                                draft_.tone==2?"tone_digital":draft_.tone==3?"tone_sunrise":"tone_urgent");
+      std::snprintf(vals[0],sizeof(vals[0]),"%s",mode);
+      std::snprintf(vals[1],sizeof(vals[1]),"%s",tone);
+      std::snprintf(vals[2],sizeof(vals[2]),"%d%%",draft_.volume);
+      std::snprintf(vals[3],sizeof(vals[3]),"%d min",draft_.snooze);
+      const int gap=ui::px(8), margin=ui::px(8);
+      const int cw=(w_-2*margin-gap)/2,ch=edit_card_height_();
+      for(int n=0;n<4;++n) {
+        const int x=margin+(n%2)*(cw+gap),y=edit_grid_top_()+(n/2)*(ch+gap);
+        auto &c=edit_cards_[n];show_visual_(c,true);
+        paint_visual_(c,x,y,cw,ch,titles[n],vals[n],"","",true,false,true,n==0?1:n==1?2:3);
+      }
       if(!new_) {chip_(rows_[6],ui::px(20),h_-ui::px(99),w_-ui::px(40),ui::px(39),p_->text("delete_alarm"));toggle_hidden(rows_[6],true);}
     } else if(screen_==CONFIRM_DELETE) {
-      place_label(rows_[0],ui::px(8),h_/3,w_-ui::px(16),ui::px(70),p_->text("delete_confirm"));
-      toggle_hidden(rows_[0],true);
+      const int card_h=std::min(ui::px(150),h_-ui::px(130));
+      const int card_y=(h_-card_h)/2-ui::px(10);
+      auto &c=list_cards_[0];show_visual_(c,true);
+      paint_visual_(c,ui::px(14),card_y,w_-ui::px(28),card_h,
+                    p_->text("delete_alarm"),p_->text("delete_confirm"),"","",false,false,true);
     }
   }
   AlarmClock *p_{};

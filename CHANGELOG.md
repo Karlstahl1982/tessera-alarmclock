@@ -1,17 +1,21 @@
 # Changelog
 
-## 0.3.0 (Beta) – grafische Display-Oberfläche
+## 0.3.1 (Beta) – Display-UI und Untermenüs
 
-- Neue 2×3-Kachelübersicht mit fünf Weckern und einer Plus-Kachel, solange Platz vorhanden ist.
-- Zeit, Name, Status und Wiederholung sind je Wecker visuell getrennt.
-- Ein/Aus direkt über die Statusplakette, Antippen der übrigen Kachel öffnet Bearbeiten.
-- Neue 2×2-Bearbeitungsansicht mit großen Kacheln für Zeit, Wiederholung, Ton und Ton/Schlummern.
-- Große Uhrzeit und Aktivitätsstatus im Kopf der Bearbeitung.
-- Die bisherigen Detaildialoge einschließlich Drehrädern sowie Speichern/Löschen bleiben erhalten.
-- Alarm-Vollbild/Stoppen/Schlummern und lokale Wecklogik unverändert aus 0.2.4.
-- LVGL-Zeichenobjekte werden beim Öffnen der Ansicht vorab erzeugt, nicht bei jedem Render-Durchlauf.
-- C++-Mocks und Regressionstests erweitert.
+- Weckername fest im Kopf jeder Weckerkachel; Uhrzeit als eigenständiger Mittelbereich; Wiederholung unten.
+- Größere, klar getrennte Typografie und eigene farbliche AN/AUS-Markierung oben rechts.
+- 2×2-Bearbeitungskacheln mit ruhigerem Layout (Icon, Titel, Wert ohne Überlappung).
+- Wiederholung/Typ: drei große grafische Auswahlkarten statt Textzeilen.
+- Wochentage: sieben große auswählbare Chips.
+- Alarmtöne: fünf Auswahlkarten plus Hörprobe-Kachel im 2×3-Raster.
+- Einstellungen: 2×2-Karten für Name, Lautstärke, Schlummern und Aktivierung.
+- Zusammenfassung: große Uhrzeit und vier kompakte Funktionskarten.
+- Drehräder für Uhrzeit und Datum mit eigenständiger Vorschau.
+- Bestehende Alarmsteuerung, Vollbildsperre, lokale Speicherung und Home-Assistant-Karte unverändert.
+- C++-Syntaxprüfung und zusätzliche Layout-/Interaktionstests vorbereitet.
+
+## 0.3.0
+- Erster grafischer Weckerraster-Aufbau und 2×2-Bearbeitungsoberfläche.
 
 ## 0.2.4
-
-- Kompatibilitätskorrektur: Standard-LVGL-Objekt statt optionalem Button-Widget.
+- Blockierende Vollbildanzeige und kompatible LVGL-Schaltflächen.

@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.3.0')
+        self.assertEqual(self.manifest['version'],'0.3.1')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -120,6 +120,21 @@ class PackageTest(unittest.TestCase):
             for key in ('grid_add','grid_time','grid_repeat','grid_audio','grid_tone',
                         'grid_on','grid_off','edit_short'):
                 self.assertIn(key,labels)
+
+    def test_graphical_detail_screens(self):
+        for fragment in ('int detail_top_() const', 'int type_card_height_() const',
+                         'int detail_grid_height_() const', 'int options_card_height_() const',
+                         'if(screen_==TYPE)', 'if(screen_==DAYS)', 'if(screen_==SOUND)',
+                         'if(screen_==OPTIONS)', 'preview_short', 'days_select',
+                         'const int name_x=x+ui::px(39)', 'const int clock_h=',
+                         'if(index<5) draft_.tone=index;', 'else p_->preview_tone(draft_.tone);'):
+            self.assertIn(fragment,self.cpp)
+        # Geometry and click areas are driven by the same layout functions.
+        self.assertIn('const int row=(y-top)/(row_h+gap);',self.cpp)
+        self.assertIn('card_h=detail_grid_height_();',self.cpp)
+        self.assertIn('ch=options_card_height_();',self.cpp)
+        render=self.cpp.split('void render_()',1)[1].split('AlarmClock *p_',1)[0]
+        self.assertNotIn('lv_obj_create(',render)
 
     def test_cpp_mock_compilation(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')

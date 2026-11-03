@@ -59,11 +59,20 @@
     "grid_time": "Time",
     "grid_repeat": "Repeat",
     "grid_tone": "Sound",
-    "grid_audio": "Audio / Snooze",
+    "grid_audio": "Audio",
     "grid_weekly": "Weekly",
     "grid_once_date": "On date",
     "grid_once": "Once",
-    "edit_short": "Edit alarm"
+    "edit_short": "Edit alarm",
+    "days_select": "Tap days to select",
+    "preview_short": "Preview",
+    "preview_detail": "Play selected sound",
+    "tone_classic_hint": "Classic",
+    "tone_gentle_hint": "Soft notes",
+    "tone_digital_hint": "Digital",
+    "tone_sunrise_hint": "Soft start",
+    "tone_urgent_hint": "Fast",
+    "grid_name": "Name"
   },
   "app": {
     "name": "AlarmClock",

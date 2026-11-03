@@ -1,29 +1,31 @@
-# Tessera AlarmClock 0.3.0 (Beta)
+# Tessera AlarmClock 0.3.1 (Beta)
 
-Schlanker Offline-Wecker für das Guition ESP32-4848S040 mit Tessera und Home Assistant.
+Eigenständiger Wecker für Guition ESP32-4848S040 mit Tessera / ESPHome und Home Assistant. Dieses Release verbessert **nur die Display-Bedienung**.
 
-## Display-Bedienung
+## Änderungen am Display
 
-- Die Tessera-Kachel „Nächster Wecker“ öffnet die grafische Weckerübersicht.
-- Je Wecker: Uhrzeit, Name, wiederkehrend/einmalig und Statusplakette **AN/AUS**.
-- Statusplakette oben rechts antippen: direkt ein- oder ausschalten.
-- Rest der Weckerkachel antippen: grafische Bearbeiten-Ansicht.
-- `+`-Kachel: neuen Wecker über bestehenden Assistenten erstellen (maximal fünf).
-- Bearbeiten: Uhrzeit (auch im großen Uhrzeitfeld), Rhythmus, Klang oder Lautstärke/Schlummern als Kacheln öffnen.
-- Der Wecker wird erst nach Tippen auf **Speichern** übernommen.
-- **Alarm-Vollbild** lässt sich nur über Stoppen oder Schlummern quittieren.
+- Weckername steht **oben**; Uhrzeit **mittig**, Wiederholung **unten**, Aktivierungsstatus **rechts oben**.
+- Auf die AN/AUS-Plakette tippen: schalten; auf die übrige Kachel tippen: bearbeiten.
+- Bearbeitungsansicht mit vier Icon-Kacheln: Zeit, Rhythmus, Ton, Lautstärke/Schlummern.
+- Wiederholung über drei Auswahlkarten, Wochentage über Chips, Töne über fünf Auswahlkarten plus Hörprobe.
+- Optionen als vier Auswahlkarten. Bei Lautstärke links auf **−** und rechts auf **+** tippen.
+- Uhrzeit und Datum weiterhin über vertikale Drehräder einstellbar.
+- Die blockierende Alarmansicht bleibt unverändert.
 
-## GitHub / Tessera aktualisieren
+## Installation über GitHub
 
-1. ZIP entpacken und alle Dateien aus dem Paket direkt in den Stamm des GitHub-Repositories `Karlstahl1982/tessera-alarmclock` hochladen und ersetzen.
-2. Commit auf `main` durchführen.
-3. Tessera → Plugins → Mit einem Link hinzufügen → **Branch testen** (`main`).
-4. Vergewissern, dass Version **0.3.0** und der neue Commit verwendet werden.
-5. Firmware zunächst nur kompilieren. Bei Erfolg auf „Hilde“ übertragen.
-6. Weckerkachel öffnen und Raster/Bearbeitung prüfen.
+1. Das ZIP entpacken.
+2. **Alle enthaltenen Dateien und Unterordner** direkt im Stamm von `Karlstahl1982/tessera-alarmclock` ersetzen.
+3. Auf Branch `main` committen.
+4. Tessera → Plugins → Branch testen → `https://github.com/Karlstahl1982/tessera-alarmclock`, `main`.
+5. Version **0.3.1** und den neuen GitHub-Commit prüfen.
+6. Firmware **zuerst nur kompilieren**, anschließend bei Erfolg auf „Hilde“ übertragen.
+7. Weckerraster, Bearbeiten, Wiederholung, Wochentage, Klangwahl, Optionen und Alarm-Vollbild prüfen.
 
-**Kompatibilität:** Basiert auf funktionierender v0.2.4; ESPHome 2026.9.0, Tessera screens-v0.4.96. Tests mit C++-Mock-Schnittstellen sind keine Bestätigung eines echten Firmware-Builds.
+## Home Assistant
 
-**Home Assistant:** Die bisherige `ha_card/tessera-alarmclock-card.js` bleibt funktionsgleich. Kein erneutes Installieren erforderlich.
+`ha_card/tessera-alarmclock-card.js` ist enthalten und bleibt gegenüber v0.3.0 unverändert. **Kein erneutes Installieren erforderlich.** Die vorhandene Lautsprecher-YAML bleibt ebenfalls unverändert.
 
-**Hinweis:** Vorherige Weckzeiten bleiben über ESPHome-Entitäten und lokale Präferenzen bestehen. Zur Sicherheit wichtige Weckzeiten vor dem Flashen notieren.
+## Teststatus
+
+Automatisierte Paket-, JavaScript-, C++-Syntax- und Layouttests. Dies ist **kein Ersatz** für den realen ESPHome-Build oder einen Test der Fontgrößen auf dem Touchdisplay.
