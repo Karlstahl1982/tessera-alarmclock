@@ -1,39 +1,39 @@
-# Tessera AlarmClock 0.0.3
+# Tessera AlarmClock v0.0.4
 
-Kompakter **Integrationstest** für das Guition ESP32-4848S040 (Display **Hilde**) unter Tessera.
+**Erste funktionsfähige Teststufe – noch kein verlässlicher Alltagswecker.**
 
-**Noch kein funktionsfähiger Wecker!** Die Kachel "Nächster Wecker" öffnet eine Ansicht mit fünf leeren Weckerplätzen. Es erfolgt weder Alarmauslösung noch Speicherung oder Home-Assistant-Synchronisierung. Nicht als zuverlässigen Wecker verwenden.
+## Funktionsumfang
+- Ein **einmaliger Alarm beim nächsten Auftreten der gewählten Uhrzeit** mit ESP32-interner Überwachung.
+- Stunde, Minute und Aktivierung als ESPHome-Entitäten in Home Assistant und in **Tessera auf dem Display → Einstellungen → Plugins → AlarmClock**.
+- Uhrzeit sowie Aktivierung werden auf dem ESP32 dauerhaft gespeichert; der Alarm ist zunächst deaktiviert.
+- Bei Auslösung deaktiviert sich der Einmalwecker; der RTTTL-Ton wird maximal 5 Minuten wiederholt. 
+- Ein eigener **15-Sekunden-Testalarm** und ein **Alarm stoppen**-Button in Home Assistant.
+- Auf dem Display zeigt die Kachel den aktiven Wecker. In der Detailansicht aktiviert/deaktiviert ein Tipp auf die erste Zeile den Wecker; während eines aktiven Alarms stoppt ein Tipp den Alarm.
+- Die Plätze 2 bis 5 bleiben Platzhalter, sodass das Plugin klein bleibt.
 
-## Installation über GitHub
+## Technische Voraussetzungen
 
-1. Dieses ZIP **entpacken**. Alle Dateien und Ordner aus dem entpackten Verzeichnis (insbesondere `tessera-plugin.yaml`, `plugin.yaml`, `components/` und `translations/`) direkt in das Hauptverzeichnis des Repositories `Karlstahl1982/tessera-alarmclock` hochladen. **Keinen zusätzlichen `alarmclock/`-Unterordner anlegen.**
-2. Den Upload als Commit auf dem Standardbranch `main` speichern.
-3. In Tessera → **Plugins** → **Mit einem Link hinzufügen** → **Branch testen** öffnen. GitHub-Link `https://github.com/Karlstahl1982/tessera-alarmclock` und Branch `main` angeben. Alternativ kann bei einem Repository ohne Release der reine GitHub-Link unter "Release" den Standardbranch testen.
-4. **Plugin lesen**. Bei erfolgreicher Prüfung dem Display `Hilde` hinzufügen und Firmware bauen/aktualisieren.
-5. Im Layout eine Kachel "Nächster Wecker" platzieren, speichern und auf dem Display öffnen. Erwartet: 5 Platzhalter "Wecker 1" bis "Wecker 5".
+- Hilde (Guition ESP32-4848S040), bereits funktionierende Tessera-Installation; Plugin API mindestens 0.16.
+- Audio-Override-YAML enthält **`rtttl: id: guition_tone`** und die vorhandene I²S-Ausgabe. Diese Datei **nicht entfernen**. Der Stand 0.0.1 oder 0.0.2 des Lautsprechertests bietet diesen ID.
+- Gültige Uhrzeit: Tessera stellt `epoch()` bereit. Ohne anfänglich übernommene Uhrzeit wird nicht geweckt. Nach HA-/WLAN-Ausfall bei weiterlaufendem Board funktioniert die zuvor gestellte Uhr weiter, muss aber noch praktisch getestet werden.
+- Die Alarmauslösung ist derzeit auf den exakten Minutenwechsel ausgelegt: **keine 5-Minuten-Nachholung**, keine Wochentage, kein Snooze, kein Vollbild-Popup und kein Alarm bei fehlender Gerätezeit. Noch nicht als alleinigen Wecker verwenden!
 
-Vor dem Firmware-Build ein Backup der funktionierenden ESPHome/Tessera-Konfiguration erstellen. Die vorhandene Lautsprecher-YAML wird von diesem Plugin **nicht** verändert.
+## Update / Installation
 
-## Änderung 0.0.3
+1. Die letzte funktionierende Firmware sowie `hilde.local.yaml` sichern.
+2. Das ZIP entpacken; **alle Dateien und Ordner unmittelbar in die Wurzel** von `https://github.com/Karlstahl1982/tessera-alarmclock` auf `main` hochladen; vorhandene Dateien ersetzen; Commit.
+3. Tessera → Plugins → Mit einem Link hinzufügen → Branch testen → Repository `https://github.com/Karlstahl1982/tessera-alarmclock`, Branch `main` → Plugin lesen.
+4. Plugin auf **Hilde** aktualisieren; prüfen, dass **0.0.4** und ein neuer GitHub-Commit verwendet werden.
+5. Firmware erstellen und installieren. Wenn der Build scheitert, die letzte Firmware unverändert lassen und das Buildlog weitergeben.
+6. Home Assistant → Einstellungen → Geräte & Dienste → ESPHome → Hilde: `AlarmClock Testalarm` drücken. Er soll rund 15 Sekunden klingen oder früher mit `AlarmClock Alarm stoppen` enden.
+7. Danach `AlarmClock Wecker 1 Stunde` / `Minute` auf eine kommende Uhrzeit stellen und `AlarmClock Wecker 1 aktiv` einschalten. Warten, bis die Uhrzeit erreicht ist; der Einmalwecker wird danach automatisch deaktiviert.
 
-- Behebt den C++-Buildfehler `request for member c_str` in `alarmclock.cpp`: Die Tessera-API `text()` liefert `const char*` und wird direkt an `snprintf` übergeben.
-- Das bestehende Test-Plugin bleibt sonst unverändert.
-- Die ESPHome-Warnungen zu GPIO19/20, `image:` und `ota` gehören nicht zu diesem Fehler und werden hier nicht verändert.
-- Ein erfolgreicher Build muss anschließend noch in der Zielumgebung bestätigt werden.
-
-## Update über GitHub
-
-1. Alle Dateien der Version 0.0.3 nach `Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen und vorhandene Dateien überschreiben (Commit erstellen).
-2. Kontrollieren, dass `tessera-plugin.yaml` im Hauptverzeichnis Version 0.0.3 enthält.
-3. In Tessera über **Mit einem Link hinzufügen → Branch testen** Repository und Branch `main` erneut einlesen. Tessera muss den **neuen Commit** verwenden; im Build-Log darf nicht mehr der alte Commit `d8139fc6e689ec9ade5357477fc019b7d34f9210` erscheinen.
-4. Plugin auf dem Display aktualisieren und die Firmware erneut kompilieren. Falls weitere Fehler auftreten, das neue Build-Log sichern.
-
-## Diagnose
-
-- Wird das Plugin nicht gefunden, zuerst prüfen, ob `tessera-plugin.yaml` im GitHub-**Hauptverzeichnis** liegt und ob der Commit im richtigen Branch gespeichert ist.
-- Erkennt Tessera den Plugin-Eintrag, aber ein Firmware-Build schlägt fehl, das vollständige Buildlog sichern.
-- Der Build wurde hier nicht auf echter Hardware getestet.
+**Bei der Installation nur Schritt 1–4 durchführen, danach die Firmware bauen und das Ergebnis melden.**
 
 ## Rückbau
 
-Tessera → Display → Plugins → AlarmClock entfernen und die Firmware erneut erstellen. Bestehende Audio-Override-YAML bleibt unverändert.
+AlarmClock 0.0.3 im Repository wiederherstellen, in Tessera Branch neu laden und Firmware zurückbauen. Die Audio-Override-YAML nicht verändern.
+
+## Quellen
+- Tessera Plugin API: https://github.com/MaxGramser/tessera-plugins/blob/main/docs/FIRMWARE_API.md
+- ESPHome RTTTL: https://esphome.io/components/rtttl/

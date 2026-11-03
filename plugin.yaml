@@ -1,1 +1,53 @@
+# A single real, locally scheduled one-shot alarm (other four entries are previews).
+# Uses the already-existing RTTTL instance in Hilde's local audio override.
+number:
+  - platform: template
+    id: alarmclock_hour
+    name: "AlarmClock Wecker 1 Stunde"
+    icon: mdi:clock-outline
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 7
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+  - platform: template
+    id: alarmclock_minute
+    name: "AlarmClock Wecker 1 Minute"
+    icon: mdi:clock-outline
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    min_value: 0
+    max_value: 59
+    step: 1
+    mode: box
+switch:
+  - platform: template
+    id: alarmclock_enabled
+    name: "AlarmClock Wecker 1 aktiv"
+    icon: mdi:alarm
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+button:
+  - platform: template
+    name: "AlarmClock Testalarm"
+    icon: mdi:volume-high
+    entity_category: diagnostic
+    on_press:
+      - lambda: 'id(alarm_clock).start_test();'
+  - platform: template
+    name: "AlarmClock Alarm stoppen"
+    icon: mdi:alarm-off
+    on_press:
+      - lambda: 'id(alarm_clock).stop_alarm();'
 alarmclock:
+  id: alarm_clock
+  hour: alarmclock_hour
+  minute: alarmclock_minute
+  enabled: alarmclock_enabled
+  tone: guition_tone

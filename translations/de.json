@@ -3,16 +3,27 @@
     "name": "Deutsch"
   },
   "screen": {
-    "title": "Wecker",
-    "none": "Noch kein Alarm",
+    "title": "Nächster Wecker",
+    "none": "Kein Wecker aktiv",
     "alarm": "Wecker",
-    "prototype": "Nur Testansicht"
+    "prototype": "Vier Plätze noch frei",
+    "ringing": "Alarm!",
+    "on": "an",
+    "off": "aus",
+    "tap_toggle": "Wecker 1 tippen: an/aus",
+    "tap_stop": "Tippen: Alarm stoppen",
+    "hour": "Wecker 1: Stunde",
+    "minute": "Wecker 1: Minute",
+    "enabled": "Wecker 1 aktiv",
+    "test": "Testalarm (15 Sek.)",
+    "stop": "Alarm stoppen",
+    "open_card": "Weckerübersicht"
   },
   "app": {
     "name": "AlarmClock",
-    "summary": "Schlanker lokaler Wecker für Tessera (erster Installationstest).",
+    "summary": "Erster lokal auslösender Einmalwecker mit 5 Plätzen.",
     "tile_name": "Nächster Wecker",
-    "tile_example": "Noch kein Alarm",
+    "tile_example": "07:00",
     "card_name": "Fünf Wecker"
   }
 }

@@ -1,6 +1,6 @@
 id: alarmclock
-version: 0.0.3
-api: '0.12'
+version: 0.0.4
+api: '0.16'
 icon: alarm
 maintainer: Karlstahl1982
 license: MIT
@@ -10,7 +10,7 @@ topics:
 requires:
   esphome: 2026.6.2
 boards: any
-flash_kb: 16
+flash_kb: 24
 tiles:
 - id: next_alarm
   name: tile_name
@@ -18,7 +18,7 @@ tiles:
   sizes:
     min: 1x1
     max: 2x2
-  memory: 512
+  memory: 640
   example: tile_example
 cards:
 - id: overview

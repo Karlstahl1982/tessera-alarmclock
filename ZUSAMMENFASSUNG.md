@@ -1,33 +1,40 @@
-# Tessera AlarmClock 0.0.3 – Projektzusammenfassung
+# Tessera AlarmClock – Projektstatus v0.0.4
 
 ## Ziel
-Schlankes Tessera-Wecker-Plugin für das Guition ESP32-4848S040 (Display „Hilde“): später fünf lokal gespeicherte Wecker, Touchbedienung, Home-Assistant-Entitäten und offlinefähige Alarmauslösung. **Aktuell ist nur ein Integrationstest mit einer Dashboard-Kachel und fünf Platzhaltern enthalten, kein einsatzfähiger Wecker.**
+Ein kompakter, offline nach Uhrzeitsynchronisierung funktionierender 5-Wecker für Tessera auf Guition ESP32-4848S040 (Hilde), mit Touchbedienung, ESPHome-Entitäten für Home Assistant und vorhandener RTTTL-Audiohardware.
 
-## Arbeitsschritte
-- [x] MVP auf kleinen Installationsprototypen reduziert.
-- [x] GitHub-Repository `https://github.com/Karlstahl1982/tessera-alarmclock` erstellt und Dateien hochgeladen (laut Nutzer).
-- [x] Tessera liest das Plugin und zeigt die Plugin-Karte an (laut Nutzer).
-- [x] Fehler aus dem echten ESPHome-Buildlog zugeordnet: `plugin_->text("alarm")` ist `const char*`; `.c_str()` war ungültig.
-- [x] Fehler in `components/alarmclock/alarmclock.cpp` behoben, Manifestversion auf 0.0.3 angehoben.
-- [x] YAML/JSON/Python statisch geprüft und ZIP-Struktur kontrolliert.
-- [ ] Dateien der Version 0.0.3 als neuen GitHub-Commit hochladen.
-- [ ] In Tessera Branch `main` erneut lesen und sicherstellen, dass der neue Commit verwendet wird.
-- [ ] Firmware erfolgreich kompilieren und Platzhalterkachel auf dem Display testen.
-- [ ] In späteren Versionen: Speicherung, lokale Zeitsteuerung, Ton, Snooze und HA-Steuerung implementieren.
-- [ ] Offline-Bedienung ohne WLAN/HA tatsächlich testen (Tessera-Verbindungszustand berücksichtigen).
+## Arbeitsschritte (aktueller Stand)
+- [x] GitHub-Repository vorhanden und Tessera erkennt die Plugin-Metadaten.
+- [x] v0.0.3 erfolgreich auf der Zielhardware kompiliert (Nutzerbestätigung).
+- [x] v0.0.3: Kachel öffnet fünf Platzhalter auf dem Display (Nutzerbestätigung).
+- [x] v0.0.4: Erste Einmal-Weckzeit (Stunde/Minute), Aktivierung, lokale Prüfung und Tonausgabe implementiert.
+- [x] v0.0.4: ESPHome-Entitäten (Stunde/Minute/Schalter) und Buttons (Test/Stop) eingebaut.
+- [x] v0.0.4: Softwarestrukturen statisch überprüft; ZIP-Inhalt vollständig.
+- [ ] Version 0.0.4 im GitHub-Repository auf `main` aktualisieren.
+- [ ] v0.0.4 in Tessera neu einlesen, Firmware kompilieren/installieren – **noch nicht getestet**.
+- [ ] 15-Sekunden-Testalarm und einmalige Weckzeit am echten Display prüfen.
+- [ ] Plätze 2–5 als reale Wecker ergänzen.
+- [ ] Einstellen über die eigene Weckerseite, wiederkehrende Wochentage, Snooze, Melodien, 60s-Lautstärkerampe, Displayhelligkeit, lokaler Alarmbildschirm ergänzen.
+- [ ] Offline-Verhalten bei unterbrochenem WLAN/HA und 5-Minuten-Nachholen nach Neustart verifizieren/implementieren.
 
 ## Probleme und Umgehungen
-- Ursprünglich falscher lokaler Pfad: Eine direkte Ordnerinstallation unter `/config/tessera-plugins/` war hier nicht der geeignete Weg. Behoben durch GitHub-Branch-Installation.
-- 0.0.2 kompiliert nicht: `request for member 'c_str' ... non-class type 'const char*'` in `AlarmOverview::open()`. In 0.0.3 durch Entfernen von `.c_str()` behoben.
-- Im Buildlog genannte Warnungen (USB GPIO19/20, deprecated `image:`, OTA-Password) sind **nicht** die Ursache dieses Abbruchs und wurden bewusst nicht verändert.
-- **Offen:** Kein vollständiger Firmware-Build im hiesigen Container möglich; die Korrektur muss auf dem echten ESPHome-System bestätigt werden. Weitere Buildfehler sind nicht ausgeschlossen.
-- Tessera referenziert im alten Log Commit `d8139fc6e689ec9ade5357477fc019b7d34f9210`. Nach dem GitHub-Update muss Tessera den neuen Commit einlesen, sonst baut es weiter 0.0.2.
+- v0.0.2 führte beim Kompilieren `.c_str()` auf `const char*` aus; behoben in 0.0.3.
+- Ursprüngliche lokale `/config/tessera-plugins/`-Installation war falsch; Installationsweg ist GitHub-Branch.
+- Nachgerüstete Lautsprecher-Hardware verwendet die GPIO-Umstellung R21–R23; die Audio-YAML ist separat und darf nicht überschrieben werden.
+- v0.0.4 nutzt absichtlich die bereits funktionierende RTTTL-ID `guition_tone`. Ist sie nicht vorhanden, schlägt die Konfigurationsprüfung mit einer klaren unbekannten-ID-Fehlermeldung fehl.
+- Der vollständige ESPHome-Build kann hier mangels installierter Ziel-Firmware-Abhängigkeiten nicht ausgeführt werden. **Kompilierbarkeit und Laufzeit müssen auf dem Zielgerät bestätigt werden.**
+- RTTTL-Audio darf nicht gleichzeitig von mehreren Funktionen verwendet werden. Die Weckerfunktion hat noch keine Ressourcenkoordination mit anderen Plugins.
+- Nur ein Einmalwecker ist echt; nach Auslösen wird der Aktivierungsschalter ausgeschaltet. Kein Snooze/Offline-Neustart-Recovery. Nicht als alleinige Wecklösung verwenden.
 
-## Installation / Update (aktueller Schritt)
-1. `Tessera_AlarmClock_0.0.3.zip` entpacken.
-2. Die **vollständigen Inhalte** direkt im Hauptverzeichnis des GitHub-Repositories `Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen und bestehende Dateien überschreiben; Commit speichern.
-3. Prüfen, ob `tessera-plugin.yaml` die Version `0.0.3` anzeigt und `components/alarmclock/alarmclock.cpp` im richtigen Unterordner liegt.
-4. **Hier anhalten und Bestätigung geben.** Erst anschließend Tessera-Branch erneut einlesen, Plugin aktualisieren und neu kompilieren.
+## Installation
+1. Firmware/Override sichern; Audio-Override mit `guition_tone` bestehen lassen.
+2. `Tessera_AlarmClock_0.0.4.zip` entpacken und **alle enthaltenen Dateien/Ordner** in die Wurzel des Repository `Karlstahl1982/tessera-alarmclock` hochladen; Commit auf `main` erstellen.
+3. In Tessera: Plugins → Mit einem Link hinzufügen → Branch testen → Repository-URL und Branch `main` → Plugin lesen.
+4. Neue Version 0.0.4 dem Display Hilde zuordnen, Firmware aktualisieren.
+5. Home Assistant → ESPHome-Gerät Hilde → `AlarmClock Testalarm` drücken; Ton 15 Sekunden, mit Stoppen beenden.
+6. Einmalwecker über Stunde/Minute/Schalter für die nächste kommende Uhrzeit aktivieren, Audio und automatische Deaktivierung prüfen.
+7. Bei Fehlern letzte funktionsfähige v0.0.3 wiederherstellen und vollständiges Log weitergeben.
 
-## Betriebshinweis
-Die Lautsprecher-YAML des Displays wird durch dieses Paket nicht verändert. Die 0.0.3 ist weiterhin **nicht zum zuverlässigen Wecken geeignet**.
+## Versionshinweise
+- v0.0.4 ist eine **Entwicklungs- und Testversion**, keine zuverlässige Alarmuhr.
+- Keine Hardwareänderungen. Kein Eingriff in bestehende Tessera-Tiles oder Audio-Override.

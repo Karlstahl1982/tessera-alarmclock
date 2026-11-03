@@ -3,16 +3,27 @@
     "name": "English"
   },
   "screen": {
-    "title": "AlarmClock",
-    "none": "No alarms yet",
+    "title": "Next alarm",
+    "none": "No alarm armed",
     "alarm": "Alarm",
-    "prototype": "Preview only"
+    "prototype": "Four slots reserved",
+    "ringing": "Alarm!",
+    "on": "on",
+    "off": "off",
+    "tap_toggle": "Tap alarm 1: on/off",
+    "tap_stop": "Tap: stop the alarm",
+    "hour": "Alarm 1: hour",
+    "minute": "Alarm 1: minute",
+    "enabled": "Alarm 1 armed",
+    "test": "Test sound (15 sec)",
+    "stop": "Stop alarm",
+    "open_card": "Alarm overview"
   },
   "app": {
     "name": "AlarmClock",
-    "summary": "A small, local alarm clock for Tessera (first installation test).",
+    "summary": "First on-device single-shot alarm; 5 available slots.",
     "tile_name": "Next alarm",
-    "tile_example": "No alarms yet",
+    "tile_example": "07:00",
     "card_name": "Five alarms"
   }
 }
