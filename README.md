@@ -1,8 +1,13 @@
-# Tessera AlarmClock v0.2.3
+# Tessera AlarmClock v0.2.4
 
 Lokaler Wecker für Tessera auf dem Guition ESP32-4848S040. Bis zu fünf Wecker, eigener Lautsprecher über bestehendes ESPHome-RTTTL-Setup, Steuerung direkt am Display und über eine Home-Assistant-Karte.
 
-## Änderungen gegenüber 0.2.2
+## Änderungen gegenüber 0.2.3
+
+- **LVGL-Kompilierfehler behoben:** Alarm-Schaltflächen werden als klickbare Basisobjekte aufgebaut. Das funktioniert auch ohne aktiviertes `LV_USE_BUTTON`.
+- **Keine Datenmigration:** Wecker, Audio, Assistent und HA-Karte bleiben unverändert.
+
+## Bestehende Funktionen aus 0.2.3
 
 - **Grafisches Bearbeiten direkt am Touchdisplay:** Große Uhrzeit, Felder für Wiederholung, Klang, Lautstärke, Schlummern/Status. Keine erneute mehrstufige Neuanlage beim Bearbeiten. Alle Felder sind berührbar; Uhrzeit bleibt über zwei LVGL-Roller einstellbar.
 - **Grafisches Bearbeiten in Home Assistant:** Zusammenhängende Bearbeitungsseite mit großer Uhrzeit, Karten für Wiederholung, Klang, Lautstärke, Schlummern und Status. Anlegen bleibt ein Wizard.
@@ -14,8 +19,8 @@ Lokaler Wecker für Tessera auf dem Guition ESP32-4848S040. Bis zu fünf Wecker,
 
 1. **Vor dem Update:** Aktuelle AlarmClock-Konfiguration und vorhandene Wecker prüfen; bei kritischen Weckzeiten unabhängigen Ersatzwecker verwenden.
 2. Alle Dateien **aus dem Inhalt dieses ZIPs** direkt ins Repository `https://github.com/Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen. Im Repository-Hauptverzeichnis müssen `plugin.yaml` und `tessera-plugin.yaml` liegen.
-3. In Tessera unter **Plugins → AlarmClock** Branch `main` aktualisieren/neu lesen, Version **0.2.3** prüfen und Firmware für **Hilde** erstellen und aufspielen. Es handelt sich um eine **Firmware-Änderung**, nicht nur um eine Home-Assistant-Karte.
-4. Optional: `ha_card/tessera-alarmclock-card.js` nach `/homeassistant/www/tessera-alarmclock-card.js` kopieren. Die Lovelace-Ressource auf `/local/tessera-alarmclock-card.js?v=0.2.3` setzen und den Browser vollständig neu laden.
+3. In Tessera unter **Plugins → AlarmClock** Branch `main` aktualisieren/neu lesen, Version **0.2.4** prüfen und Firmware für **Hilde** erstellen und aufspielen. Es handelt sich um eine **Firmware-Änderung**, nicht nur um eine Home-Assistant-Karte.
+4. **Home-Assistant-Karte nicht neu installieren:** Die Datei liegt der Vollständigkeit halber bei und ist unverändert gegenüber 0.2.3. Die bestehende Lovelace-Ressource kann bleiben.
 5. Auf dem Display eine vorhandene Weckzeit antippen, grafisch bearbeiten und speichern. Danach **Testalarm** auslösen. Prüfen, dass Hintergrund-Taps und Zurück-Gesten die Alarmansicht nicht schließen und dass **Stoppen** zuverlässig funktioniert.
 
 ## Architektur

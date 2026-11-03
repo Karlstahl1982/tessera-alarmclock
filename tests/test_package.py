@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.2.3')
+        self.assertEqual(self.manifest['version'],'0.2.4')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -94,6 +94,9 @@ class PackageTest(unittest.TestCase):
         self.assertNotIn('tessera::show_popup(',c)
         self.assertNotIn('tessera::popup_shown(',c)
         self.assertNotIn('tessera::close_popup(',c)
+        self.assertNotIn('lv_button_create(', c, 'Do not require optional LVGL Button widget')
+        self.assertIn('lv_obj_t *btn=lv_obj_create(alarm_overlay_);', c)
+        self.assertIn('lv_obj_add_flag(btn,LV_OBJ_FLAG_CLICKABLE);', c)
         # A timeout must silence audio without auto-acknowledging the alarm.
         self.assertNotRegex(c,r'\(s\.test\?15000u:300000u\)\)\s*stop_alarm')
         js=(ROOT/'ha_card/tessera-alarmclock-card.js').read_text()

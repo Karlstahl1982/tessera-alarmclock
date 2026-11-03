@@ -19,7 +19,6 @@ inline int lv_display_get_horizontal_resolution(lv_display_t*){return 480;}
 inline int lv_display_get_vertical_resolution(lv_display_t*){return 480;}
 inline lv_obj_t *lv_layer_sys(){return nullptr;}
 inline lv_obj_t *lv_obj_create(lv_obj_t*){return nullptr;}
-inline lv_obj_t *lv_button_create(lv_obj_t*){return nullptr;}
 inline void lv_obj_delete(lv_obj_t*){}
 inline void lv_obj_move_foreground(lv_obj_t*){}
 inline lv_obj_t *lv_obj_get_parent(lv_obj_t*){return nullptr;}

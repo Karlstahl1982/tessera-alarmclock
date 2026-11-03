@@ -542,7 +542,13 @@ void AlarmClock::update_alarm_overlay_() {
     const int button_y=overlay_height_*74/100;
     const int button_height=std::min(78,overlay_height_*18/100);
     auto add_button=[&](int x,lv_color_t color,lv_event_cb_t cb) -> lv_obj_t * {
-      lv_obj_t *btn=lv_button_create(alarm_overlay_);
+      // A clickable base object works even when LVGL's optional Button widget
+      // is disabled in the firmware configuration (LV_USE_BUTTON=0).
+      lv_obj_t *btn=lv_obj_create(alarm_overlay_);
+      lv_obj_add_flag(btn,LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_remove_flag(btn,LV_OBJ_FLAG_SCROLLABLE);
+      lv_obj_set_style_bg_opa(btn,LV_OPA_COVER,0);
+      lv_obj_set_style_border_width(btn,0,0);
       lv_obj_set_pos(btn,x,button_y);
       lv_obj_set_size(btn,button_width,button_height);
       lv_obj_set_style_radius(btn,14,0);

@@ -1,4 +1,4 @@
-# Tessera AlarmClock – Home-Assistant-Karte v0.2.3
+# Tessera AlarmClock – Home-Assistant-Karte (unverändert seit v0.2.3)
 
 Die Karte zeigt den nächsten Alarm und eine übersichtliche Liste der angelegten Wecker. **Neue Wecker** werden mit dem vierstufigen Wizard angelegt; **vorhandene Wecker** öffnen eine grafische Bearbeitungsseite mit großer Zeitanzeige, Wiederholung, Ton, Lautstärke, Schlummern und Status.
 
@@ -16,3 +16,6 @@ Der HA-Kartentausch aktualisiert nur Home Assistant. **Für die neue, nicht wegk
 ## Verlässlichkeit
 
 HA ist für die Konfiguration nicht die führende Instanz. Die ESP32-Firmware verwaltet die fünf Wecker lokal. Funktionstests für das Display sind im Zielgerät noch erforderlich; ein von der Firmware unabhängiger Ersatzwecker ist für wichtige Termine ratsam.
+
+
+> **Hinweis zum Plugin-Release 0.2.4:** Der Hotfix betrifft nur die Firmware-Komponente (LVGL-Kompilierung). Ein erneutes Kopieren der Home-Assistant-Karte oder Ändern der Ressourcen-URL ist nicht erforderlich.

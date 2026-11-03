@@ -1,5 +1,13 @@
 # Änderungsprotokoll
 
+## 0.2.4 – ESPHome/LVGL-Kompilierfix
+
+- Fehler bei `lv_button_create` in `alarmclock.cpp` behoben: Overlay-Aktionen verwenden jetzt anklickbare LVGL-Basisobjekte statt des optionalen Button-Widgets.
+- Gleiches Erscheinungsbild und dieselben Klick-Callbacks für **Stoppen** und **Schlummern** beibehalten.
+- Test-Mock bereinigt: Die Button-Widget-Funktion wird absichtlich nicht mehr bereitgestellt, damit dieser Fehler zukünftig im lokalen C++-Check erkannt wird.
+- Keine Änderungen an gespeicherten Weckzeiten, Home-Assistant-Karte, Lautsprecher oder Alarmablauf.
+
+
 ## 0.2.3 – UI/Alarm-Bedienung
 
 - Bestehende Wecker erhalten eine kompakte, grafische Bearbeitungsübersicht am Display; der Wizard bleibt für die Erstanlage.
