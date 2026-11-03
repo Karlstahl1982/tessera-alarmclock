@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.3.6')
+        self.assertEqual(self.manifest['version'],'0.3.7')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -111,7 +111,7 @@ class PackageTest(unittest.TestCase):
         self.assertIn('cancel_snooze?"X":"+"',c)
         self.assertIn('void paint_trash_()',c)
         self.assertIn('lv_obj_t *trash_bg_',c)
-        self.assertIn('paint_pencil_()',c)
+        self.assertIn('paint_action_icon_()',c)
         self.assertNotIn('"%d / 5  |  %s"',c)
         self.assertNotIn('p_->text("delete_alarm"));\n      toggle_hidden(rows_[6]',c)
         for l in ('de','en'):
@@ -144,18 +144,28 @@ class PackageTest(unittest.TestCase):
 
     def test_audio_mock_runtime(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
-        for name in ('test_audio_runtime','test_cold_start','test_first_scheduled_alarm','test_millis_rollover','test_snooze_suppression','test_cancel_snooze'):
+        for name in ('test_audio_runtime','test_cold_start','test_first_scheduled_alarm','test_millis_rollover','test_snooze_suppression','test_cancel_snooze','test_tile_cancel'):
             source=ROOT/f'tests/{name}.cpp'
             executable=ROOT/f'tests/_{name}'
             try:
                 subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror',
                                 '-I'+str(ROOT/'tests/cpp_mocks'),
                                 '-I'+str(ROOT/'components/alarmclock'),
-                                str(source),str(ROOT/'components/alarmclock/alarmclock.cpp'),
+                                str(source),*([] if name=='test_tile_cancel' else [str(ROOT/'components/alarmclock/alarmclock.cpp')]),
                                 '-o',str(executable)],check=True,capture_output=True,text=True)
                 subprocess.run([str(executable)],check=True,capture_output=True,text=True)
             finally:
                 if executable.exists(): executable.unlink()
+
+    def test_tile_snooze_cancel_contract(self):
+        # The dashboard tile uses the actual touch location: only the red X
+        # cancels a pending snooze; the rest of the tile stays navigational.
+        c=self.cpp.split('class NextAlarmTile final',1)[1].split('class AlarmOverview final',1)[0]
+        for token in ('cancel_snooze', 'CROSS[9][4]',
+                      'lv_color_hex(0xBD3549)', 'tessera::tap_point()',
+                      'p_->stop_alarm(slot)', 'tessera::open_card('):
+            self.assertIn(token,c)
+        self.assertIn('snoozing(slot)',c)
 
     def test_js_syntax(self):
         subprocess.run(['node','--check',str(ROOT/'ha_card/tessera-alarmclock-card.js')],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)

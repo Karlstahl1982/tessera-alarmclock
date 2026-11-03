@@ -85,13 +85,15 @@ struct Plugin {virtual ~Plugin(){};virtual void on_interval(uint32_t){};virtual 
  template<class F>void add_tile(const char*,F){};template<class F>void add_card(const char*,F,bool){};};
 inline uint32_t epoch(){return 123456789;}
 inline Time local_time(uint32_t){return {};}
-inline void open_card(const char*,const char*,const char*,int){}
+inline int mock_open_card_calls=0;
+inline void open_card(const char*,const char*,const char*,int){++mock_open_card_calls;}
 inline void wake(Plugin*){}
 inline void refresh(){}
 inline bool popup_shown(Plugin*){return false;}
 inline void close_popup(Plugin*){}
 template<class F>void show_popup(Plugin*,F,PopupWidth){}
-inline Tap tap_point(){return {};}
+inline Tap mock_tap_point{0,0};
+inline Tap tap_point(){return mock_tap_point;}
 namespace ui {
  inline int color(theme::R){return 0;}
  inline void* font(Font){return nullptr;}

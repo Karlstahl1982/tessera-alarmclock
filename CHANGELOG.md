@@ -1,13 +1,12 @@
-# Changelog
+# Changelog – Tessera AlarmClock
 
-## v0.3.6 (2026-11-04)
-- Lautstärkestart auf **5 %** gesetzt (digitaler Sollwert).
-- Erhöhung um **5 Prozentpunkte alle 15 Sekunden** statt kontinuierlicher 60-Sekunden-Rampe.
-- Maximale Lautstärke pro Wecker wird weiterhin als obere Grenze berücksichtigt.
-- Die Alarmansicht zeigt die tatsächlich angewendete Stufe, den Zielwert, einen stufenweisen Fortschrittsbalken und den Countdown zur **nächsten** Erhöhung.
-- I²S-Lautstärke wird nur bei Stufenwechsel oder erstem Audiostart gesetzt.
-- Laufzeittests auf neue 15-Sekunden-Grenzen und Zielwertbegrenzung angepasst.
-- Alle Funktionen aus v0.3.5 unverändert übernommen, insbesondere Schlummerabbruch und blockierende Alarmansicht.
+## 0.3.7 – Hauptkachel: Schlummern abbrechen
+- Das bisherige blaue, aus Rechtecken gezeichnete Bearbeiten-Symbol wurde auf der Startkachel als Stiftsymbol beibehalten und leicht nachgezeichnet.
+- Während eines laufenden Schlummermodus zeigt die Hauptkachel stattdessen einen roten Kreis mit deutlich sichtbarem weißem X.
+- Antippen dieses Buttons beendet ausschließlich den in der Hauptkachel angezeigten Schlummeralarm, einschließlich des vorgemerkten Wiederanlaufs.
+- Antippen außerhalb des X öffnet wie bisher die Weckerübersicht.
+- Die bestehenden Audio-, Weckzeit-, Fortschritts- und Home-Assistant-Funktionen bleiben unverändert.
+- Neuer C++-Laufzeittest prüft die Touchbereiche und das gezielte Beenden eines Schlummeralarms.
 
-## v0.3.5
-- Schlummern beenden für einzelne Wecker, Stiftsymbol statt Belegungszähler und Löschsymbol im Editor.
+## 0.3.6
+- Lautstärkestart bei 5 %, danach +5 Prozentpunkte alle 15 Sekunden bis zur individuellen Grenze.

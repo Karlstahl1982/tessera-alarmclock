@@ -1,30 +1,31 @@
-# Projektzusammenfassung – Tessera AlarmClock v0.3.6
+# Projektzusammenfassung – Tessera AlarmClock v0.3.7
 
 ## Ziel
-Bis zu fünf lokal gesteuerte Wecker auf Guition ESP32-4848S040 / Tessera, mit akustischem Alarm, Schlummern, Touchbedienung und wenigen zentralen HA-Entitäten. Lautstärke beginnt bei 5 % und steigt stufenweise alle 15 Sekunden um 5 Prozentpunkte.
+Große Tessera-Weckerkachel benutzerfreundlicher gestalten: Das bisherige Bearbeiten-Symbol soll während eines laufenden Schlummermodus zu einem **roten X zum gezielten Abbrechen** wechseln; andere Alarme bleiben unberührt. Die bestehende v0.3.6-Funktionalität vollständig erhalten.
 
 ## Arbeitsschritte
-- [x] Vollständigen Stand v0.3.5 inklusive sämtlicher Dateien übernommen.
-- [x] Feste Lautstärkekurve 5 %, +5 Prozentpunkte/15 Sekunden implementiert.
-- [x] Die konfigurierte Maximal-Lautstärke als Obergrenze beibehalten.
-- [x] I²S-Updates auf Stufenwechsel bzw. Audiostart reduziert.
-- [x] Fortschrittsbalken und Countdown auf die neue 15-Sekunden-Staffel angepasst.
-- [x] Regressionstests und Dokumentation aktualisiert.
-- [ ] Firmware mit ESPHome 2026.9.0 / Tessera screens-v0.4.96 tatsächlich bauen.
-- [ ] Per OTA auf Hilde installieren und den Lautsprecher bei 5 %, 10 %, 15 % testen.
-- [ ] 5-Minuten-Alarm und Übergang in den Schlummermodus auf dem Gerät prüfen.
+- [x] Vollständigen Stand v0.3.6 inklusive Display-, Audio-, Home-Assistant- und Testdateien übernommen.
+- [x] Bedeutung des bisherigen blauen Treppen-Symbols festgestellt: vereinfachte Stiftgrafik.
+- [x] Rotes X bei aktivem Schlummermodus statt Bearbeiten-Symbol implementiert.
+- [x] Touchbereich auf das Symbol begrenzt; nur dort wird der Schlummeralarm abgebrochen.
+- [x] Normale Kachelberührung öffnet weiterhin die Weckerübersicht.
+- [x] `stop_alarm(slot)` verwendet: löscht gezielt `snooze_pending` und stoppt den betreffenden Alarmzyklus.
+- [x] Vollständige Tests einschließlich Touch-Routing mit C++-Mocks ausgeführt (26 erfolgreich).
+- [x] Dokumentation, Changelog, Testbericht und Installationsanleitung aktualisiert.
+- [ ] Tatsächlichen ESPHome-Firmware-Build auf Tessera/Guition ausführen.
+- [ ] Hardwaretest: rotes X, Tap außerhalb, kein neuer Ton nach Abbruch, anderer Wecker bleibt erhalten.
 
-## Probleme / umgangene Fehler
-- Die vorherige Rampe startete bei 50 % der eingestellten Maximallautstärke. Bei 100 % war sie damit sofort bei 50–55 %. Jetzt startet sie immer bei 5 %.
-- Vorher wurde die Lautstärke jede Sekunde interpoliert. Jetzt erfolgt ein exakter digitaler Stufenwechsel nur alle 15 Sekunden; der Balken zeigt dieselben Schritte.
-- `set_gain()` alleine aktualisiert die Lautstärke nicht während eines laufenden I²S-Audiostreams. Deshalb bleibt `speaker_->set_volume()` am Stufenwechsel erhalten.
-- Für individuell begrenzte Wecker (z. B. 60 %) endet die Rampe früher, statt trotz Zielwert weiter anzusteigen.
-- 5 % digitaler Pegel kann trotz korrekter Technik sehr leise oder unhörbar sein. Die Prozentwerte sind nicht linear zur wahrgenommenen Lautstärke und keine dB-Angaben.
-- Firmware-Kompilierung und Hardwaretest können hier nicht durchgeführt werden; C++-Mock-Tests ersetzen diese nicht.
+## Probleme und umgangene Fehler
+- **Unverständliches Symbol:** Die vorherige Stiftgrafik bestand aus kleinen Rechtecken und sah wie eine Treppe aus. Statt einer Schrift- oder Icon-Abhängigkeit werden einfache LVGL-Rechtecke genutzt; während Schlummern ist ein gut erkennbares weißes X im roten Kreis sichtbar.
+- **Ungewollte Navigation/Abbruch:** Nicht die gesamte Kachel bricht das Schlummern ab. Der Touchbereich ist auf die rechte untere Ecke begrenzt.
+- **Mehrere Alarme:** Das X adressiert ausschließlich den von der Hauptkachel gezeigten, nächstfälligen Schlummeralarm, nicht die globale `stop_all()`-Funktion.
+- **ESPHome-Kompatibilität:** Keine neuen optionalen LVGL-Widgets eingeführt; nur bestehende Primitive verwendet. Ein echter Gerätebuild bleibt ausstehend.
+- **Test-Kompilierung:** Ein zuvor schon zu kleiner Timer-Textpuffer wurde für strikte Compilerwarnungen auf 20 Zeichen vergrößert; die Anzeige bleibt identisch.
 
 ## Installation
-1. Archiv entpacken, alle Dateien in das Stammverzeichnis von `Karlstahl1982/tessera-alarmclock` hochladen und auf `main` committen.
-2. In Tessera Plugin über `Branch testen` neu laden und Version 0.3.6/Commit prüfen.
-3. ESPHome-Build durchführen und **nur bei Erfolg** auf Hilde übertragen.
-4. Testalarm starten; zunächst die Anzeige bei 0/15/30 Sekunden überprüfen und tatsächliche Hörbarkeit prüfen. Nach dem Stoppen prüfen, dass keine Rest-Alarmsequenz aktiv bleibt.
-5. Home-Assistant-Entitäten und Dashboard-Ressource müssen nicht angepasst werden.
+1. ZIP vollständig entpacken und **alle enthaltenen Dateien** in das Stammverzeichnis von `Karlstahl1982/tessera-alarmclock` hochladen; `main` committen.
+2. Plugin in Tessera über **Branch testen** neu einlesen und Version **0.3.7** kontrollieren.
+3. ESPHome-Build erstellen und nach Erfolg auf **Hilde** übertragen.
+4. Testwecker auslösen, **Schlummern** wählen, rotes X in Hauptkachel prüfen; anderes Tippen muss die Übersicht öffnen, rotes X beendet nur den betroffenen Schlummeralarm.
+5. Beim späteren ursprünglichen Schlummerzeitpunkt kontrollieren, dass kein erneuter Alarm dieses Weckers startet.
+6. Die Home-Assistant-Karte benötigt keine Änderung.

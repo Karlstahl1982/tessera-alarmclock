@@ -75,16 +75,19 @@ class NextAlarmTile final : public tessera::Tile {
     heading_ = ui::label(c.parent, Font::TITLE, theme::INK);
     clock_ = ui::label(c.parent, Font::VALUE, theme::INK);
     detail_ = ui::label(c.parent, Font::BODY_LARGE, theme::MUTED);
-    // A small pencil pictogram signals that tapping the tile opens editing.
-    // Use rectangles only: no font-specific symbols or optional LVGL widgets.
+    // Normal: editing pencil. Pending snooze: red X to cancel that snooze.
+    // Draw both as simple LVGL rectangles (no font-specific Unicode glyphs).
     pencil_circle_ = lv_obj_create(c.parent);
-    for (auto &piece : pencil_parts_) piece = lv_obj_create(c.parent);
-    for (auto *obj : {pencil_circle_, pencil_parts_[0], pencil_parts_[1],
-                      pencil_parts_[2], pencil_parts_[3], pencil_parts_[4]}) {
-      lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
-      lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
-      lv_obj_set_style_pad_all(obj, 0, 0);
-      lv_obj_set_style_border_width(obj, 0, 0);
+    lv_obj_remove_flag(pencil_circle_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(pencil_circle_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(pencil_circle_, 0, 0);
+    lv_obj_set_style_border_width(pencil_circle_, 0, 0);
+    for (auto &piece : pencil_parts_) {
+      piece = lv_obj_create(c.parent);
+      lv_obj_remove_flag(piece, LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_remove_flag(piece, LV_OBJ_FLAG_SCROLLABLE);
+      lv_obj_set_style_pad_all(piece, 0, 0);
+      lv_obj_set_style_border_width(piece, 0, 0);
     }
     on_tick(0);
   }
@@ -103,7 +106,7 @@ class NextAlarmTile final : public tessera::Tile {
       std::snprintf(value, sizeof(value), "%s", p_->text("ringing_hint"));
     } else if (n >= 0 && p_->snoozing(n)) {
       const int rem=p_->snooze_remaining_seconds(n);
-      char time[12];std::snprintf(time,sizeof(time),"%02d:%02d",rem/60,rem%60);
+      char time[20];std::snprintf(time,sizeof(time),"%02d:%02d",rem/60,rem%60);
       ui::set_text(clock_,time);
       std::snprintf(value,sizeof(value),"%s · %s",p_->alarm_name(n),p_->text("snoozing"));
     } else if (n < 0) {
@@ -116,18 +119,31 @@ class NextAlarmTile final : public tessera::Tile {
     }
     const int bottom_y = std::max(ui::px(60), h_ - ui::px(64));
     place_label(detail_, 0, bottom_y, w_, ui::line_height(Font::BODY_LARGE), value);
-    // Compact edit pencil, bottom-right instead of the redundant "5/5" line.
-    paint_pencil_();
+    // During snooze, replace the edit icon by the red cancel button.
+    paint_action_icon_();
   }
   void on_theme() override {
     ui::set_color(heading_, theme::INK);
     ui::set_color(clock_, theme::INK);
     ui::set_color(detail_, theme::MUTED);
-    paint_pencil_();
+    paint_action_icon_();
   }
-  void on_tap() override { tessera::open_card(p_->plugin_id(), "overview", "", tile_); }
+  void on_tap() override {
+    const int slot = p_->next_alarm();
+    if (slot >= 0 && p_->snoozing(slot)) {
+      // Tessera reports tile-local touch coordinates. Only the button itself
+      // cancels snooze; touching anywhere else still opens alarm management.
+      const auto pt = tessera::tap_point();
+      if (pt.x >= w_ - ui::px(56) && pt.x < w_ &&
+          pt.y >= h_ - ui::px(55) && pt.y < h_) {
+        p_->stop_alarm(slot);  // clears snooze_pending, not other alarms
+        return;
+      }
+    }
+    tessera::open_card(p_->plugin_id(), "overview", "", tile_);
+  }
  private:
-  void paint_pencil_() {
+  void paint_action_icon_() {
     if (!pencil_circle_) return;
     const int d = ui::px(40);
     const int x = w_ - d - ui::px(8);
@@ -136,14 +152,25 @@ class NextAlarmTile final : public tessera::Tile {
     lv_obj_set_size(pencil_circle_, d, d);
     lv_obj_set_style_radius(pencil_circle_, ui::px(12), 0);
     lv_obj_set_style_bg_opa(pencil_circle_, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(pencil_circle_, ui::color(theme::ACCENT), 0);
-    // Stair-step pencil glyph (pen body, point and eraser); robust with all fonts.
-    const int shape[5][4] = {{9,27,5,5},{14,22,7,7},{21,15,7,7},
-                             {28,11,4,5},{9,32,5,2}};
-    for (int i=0;i<5;++i) {
+    const int slot = p_->next_alarm();
+    const bool cancel_snooze = slot >= 0 && p_->snoozing(slot);
+    lv_obj_set_style_bg_color(pencil_circle_,
+                              cancel_snooze ? lv_color_hex(0xBD3549) : ui::color(theme::ACCENT), 0);
+    // Nine overlapping pixels create a distinct X (rather than the old stair
+    // shape). The pencil uses a diagonal body, tip and eraser.
+    static constexpr int CROSS[9][4] = {
+      {10,10,6,6},{14,14,6,6},{18,18,6,6},{22,22,6,6},{26,26,6,6},
+      {26,10,6,6},{22,14,6,6},{14,22,6,6},{10,26,6,6}
+    };
+    static constexpr int PENCIL[9][4] = {
+      {8,29,5,5},{11,25,6,6},{14,22,6,6},{17,19,6,6},{20,16,6,6},
+      {23,13,6,6},{26,10,6,6},{29,8,4,6},{7,34,6,2}
+    };
+    for (int i=0;i<9;++i) {
+      const int *piece = cancel_snooze ? CROSS[i] : PENCIL[i];
       auto *o=pencil_parts_[i];
-      lv_obj_set_pos(o,x+ui::px(shape[i][0]),y+ui::px(shape[i][1]));
-      lv_obj_set_size(o,ui::px(shape[i][2]),ui::px(shape[i][3]));
+      lv_obj_set_pos(o,x+ui::px(piece[0]),y+ui::px(piece[1]));
+      lv_obj_set_size(o,ui::px(piece[2]),ui::px(piece[3]));
       lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
       lv_obj_set_style_bg_color(o,ui::color(theme::ON_ACCENT),0);
       lv_obj_set_style_radius(o,ui::px(1),0);
@@ -152,7 +179,7 @@ class NextAlarmTile final : public tessera::Tile {
   AlarmClock *p_{};
   int tile_{-1}, w_{0}, h_{0};
   lv_obj_t *heading_{}, *clock_{}, *detail_{};
-  lv_obj_t *pencil_circle_{}, *pencil_parts_[5]{};
+  lv_obj_t *pencil_circle_{}, *pencil_parts_[9]{};
 };
 
 class AlarmOverview final : public tessera::Card {

@@ -1,35 +1,30 @@
-# Tessera AlarmClock v0.3.6
+# Tessera AlarmClock v0.3.7
 
-Lokaler Wecker für Guition ESP32-4848S040 mit Tessera. Vollständiges Plugin mit fünf Weckern, Alarm-Vollbild, Schlummerfunktion und zentralen Home-Assistant-Entitäten.
+Lokaler Wecker für Guition ESP32-4848S040 mit Tessera. Bis zu fünf Wecker, lokale Zeitauswertung, Alarmtöne, Schlummern, Touchbedienung und nur zentrale Home-Assistant-Entitäten.
 
-## Lautstärkekurve (neu)
+## Neu in v0.3.7
 
-- **0 Sekunden:** 5 %
-- **15 Sekunden:** 10 %
-- **30 Sekunden:** 15 %
-- **60 Sekunden:** 25 %
-- **165 Sekunden:** 60 % (falls 60 % als Maximallautstärke eingestellt)
-- **285 Sekunden / 4:45 Minuten:** 100 % (falls 100 % als Maximum eingestellt)
-- **300 Sekunden / 5:00 Minuten:** automatisches Ende des Alarmtons (Alarmanzeige bleibt bis zur Quittierung sichtbar)
+Das bisherige blaue Symbol unten rechts in der großen Tessera-Weckerkachel ist ein stilisierter Stift zum Bearbeiten. Während **Schlummern** wechselt es zu einem **roten X-Button**:
 
-Die Kurve endet bei der **pro Wecker eingestellten Maximallautstärke**. Die Prozentanzeige ist eine Software-Skalierung, keine Messung des Schallpegels. Ein Start bei 5 % kann bei kleinen Lautsprechern praktisch unhörbar sein.
+- **Rotes X drücken:** Nur den angezeigten Schlummeralarm inklusive ausstehender Wiederholung abbrechen.
+- **Anderswo auf die Kachel tippen:** „Meine Wecker“ öffnen, ohne den Schlummeralarm zu beenden.
+- **Ohne Schlummern:** Bearbeiten-Symbol wie bisher.
 
-Der Fortschrittsbalken wächst mit jeder 15-Sekunden-Stufe. Der Countdown zeigt die Sekunden bis zur **nächsten Erhöhung**, nicht bis zum endgültigen Zielwert. Der 75-Sekunden-Testalarm erlaubt die Prüfung der ersten vier Erhöhungen (bei 15, 30, 45 und 60 Sekunden).
+Das Icon wechselt dynamisch; es sind keine neuen Home-Assistant-Entitäten nötig. Bei mehreren gleichzeitig schlummernden Weckern betrifft das X den auf der Hauptkachel angezeigten, zeitlich nächsten Schlummeralarm; weitere Schlummeralarme werden nicht beendet.
 
-## Installation / Update von v0.3.5
+## Installation
 
-1. Vorhandene Weckzeiten vorsichtshalber notieren.
-2. ZIP entpacken und **alle Dateien** direkt in das Hauptverzeichnis des bestehenden GitHub-Repositories `Karlstahl1982/tessera-alarmclock` laden, ältere Dateien ersetzen, `main` committen.
-3. In Tessera unter **Mit Link hinzufügen → Branch testen** den neuen Commit von `main` einlesen. Manifestversion **0.3.6** kontrollieren.
-4. Auf Hilde zunächst einen **ESPHome-Firmware-Build** ausführen. Nur bei erfolgreichem Build installieren.
-5. Den Testalarm starten und 0 s / 15 s / 30 s / 45 s / 60 s prüfen. Es sollten 5 % / 10 % / 15 % / 20 % / 25 % angezeigt werden; jeweils 15 Sekunden bis zum nächsten Schritt.
-6. Den echten Weckalarm mit einer kurzen Testzeit prüfen; bis zur Bestätigung einen zweiten unabhängigen Wecker nutzen.
+1. Eine Sicherung der bisherigen Konfiguration/Weckzeiten vorhalten.
+2. Das komplette ZIP entpacken und **alle Dateien aus dem Archiv direkt in das Hauptverzeichnis** des bestehenden Repositories `Karlstahl1982/tessera-alarmclock` hochladen. Vorhandene Dateien ersetzen und auf `main` committen.
+3. In Tessera **Plugins → Mit einem Link hinzufügen → Branch testen** `https://github.com/Karlstahl1982/tessera-alarmclock` und Branch `main` auswählen; neue Version **0.3.7** bzw. den neuen Commit kontrollieren.
+4. Einen neuen ESPHome-Firmware-Build für **Hilde** starten. Nur nach erfolgreicher Kompilierung auf das Display übertragen.
+5. Einen einmaligen Wecker mit kurzer Testzeit anlegen; beim Klingeln **Schlummern** drücken. Auf der Hauptkachel sollte das **rote X** erscheinen. Durch Tippen außerhalb des X muss sich die Übersicht öffnen. Durch Tippen auf das rote X muss das Schlummern abgebrochen werden.
+6. Sicherstellen, dass nach Ablauf der ursprünglichen Schlummerzeit **kein Ton** mehr startet. Andere Wecker und ihre Aktivierung sollen unverändert bleiben.
 
-**Home Assistant:** Es bleibt bei drei zentralen Entitäten. Die separat installierte Dashboard-Karte benötigt für dieses Update **keine** Anpassung.
+Home Assistant: Die separat installierte Karte und die drei zentralen Entitäten müssen nicht verändert werden.
 
-## Technische Hinweise
+## Bekannte Grenzen
 
-- Die Lautstärke steigt digital über `rtttl::Rtttl::set_gain()` und `speaker::Speaker::set_volume()`; nur bei Wechsel der Stufe wird der laufende I²S-Ausgang neu gesetzt.
-- Nach einem Geräte-Neustart ohne Zeitquelle ist ohne RTC kein verlässlicher Weckalarm garantiert.
-- Der native ESPHome-Firmware-Build mit echter Hardware und akustischer Test muss beim Anwender erfolgen.
-- Die Wecker-Einstellungen bleiben durch die Änderung von v0.3.5 erhalten.
+- Echte ESPHome-Kompilierung und Touchprüfung auf dem Guition können hier nicht durchgeführt werden; die lokalen C++-Mock-Tests ersetzen den Gerätetest nicht.
+- Wenn die Kachel sehr klein platziert ist, kann das 40-px-Icon weniger Platz haben. Am großen 2×3-Widget ist der Bereich gut erreichbar.
+- Die Akku-/Netzstromversorgung und die laufende Gerätezeit bestimmen weiterhin die Verfügbarkeit des Weckers.
