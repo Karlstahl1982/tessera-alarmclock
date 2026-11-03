@@ -1,0 +1,70 @@
+# Beispiel Lovelace UI; Entitäts-IDs in HA unter Hilde prüfen/anpassen.
+type: vertical-stack
+cards:
+  - type: markdown
+    content: "## AlarmClock – Hilde\nFünf lokal verwaltete Wecker"
+  - type: entities
+    title: Wecker 1
+    show_header_toggle: false
+    entities:
+      - entity: switch.alarmclock_1_aktiv
+      - entity: time.alarmclock_1_uhrzeit
+      - entity: select.alarmclock_1_modus
+      - entity: date.alarmclock_1_datum
+      - entity: text.alarmclock_1_wochentage
+      - entity: select.alarmclock_1_klang
+      - entity: number.alarmclock_1_lautstarke
+      - entity: select.alarmclock_1_schlummerminuten
+  - type: entities
+    title: Wecker 2
+    show_header_toggle: false
+    entities:
+      - entity: switch.alarmclock_2_aktiv
+      - entity: time.alarmclock_2_uhrzeit
+      - entity: select.alarmclock_2_modus
+      - entity: date.alarmclock_2_datum
+      - entity: text.alarmclock_2_wochentage
+      - entity: select.alarmclock_2_klang
+      - entity: number.alarmclock_2_lautstarke
+      - entity: select.alarmclock_2_schlummerminuten
+  - type: entities
+    title: Wecker 3
+    show_header_toggle: false
+    entities:
+      - entity: switch.alarmclock_3_aktiv
+      - entity: time.alarmclock_3_uhrzeit
+      - entity: select.alarmclock_3_modus
+      - entity: date.alarmclock_3_datum
+      - entity: text.alarmclock_3_wochentage
+      - entity: select.alarmclock_3_klang
+      - entity: number.alarmclock_3_lautstarke
+      - entity: select.alarmclock_3_schlummerminuten
+  - type: entities
+    title: Wecker 4
+    show_header_toggle: false
+    entities:
+      - entity: switch.alarmclock_4_aktiv
+      - entity: time.alarmclock_4_uhrzeit
+      - entity: select.alarmclock_4_modus
+      - entity: date.alarmclock_4_datum
+      - entity: text.alarmclock_4_wochentage
+      - entity: select.alarmclock_4_klang
+      - entity: number.alarmclock_4_lautstarke
+      - entity: select.alarmclock_4_schlummerminuten
+  - type: entities
+    title: Wecker 5
+    show_header_toggle: false
+    entities:
+      - entity: switch.alarmclock_5_aktiv
+      - entity: time.alarmclock_5_uhrzeit
+      - entity: select.alarmclock_5_modus
+      - entity: date.alarmclock_5_datum
+      - entity: text.alarmclock_5_wochentage
+      - entity: select.alarmclock_5_klang
+      - entity: number.alarmclock_5_lautstarke
+      - entity: select.alarmclock_5_schlummerminuten
+  - type: entities
+    title: Funktionstest
+    entities:
+      - entity: button.alarmclock_testalarm
+      - entity: button.alarmclock_alarm_stoppen

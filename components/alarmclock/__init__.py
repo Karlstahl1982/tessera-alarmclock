@@ -1,30 +1,34 @@
-"""Tessera AlarmClock: first local single-shot alarm with native ESPHome settings."""
+"""Tessera AlarmClock: five autonomous alarms with ESPHome entities."""
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import datetime, rtttl, smart_display, switch
+from esphome.components import datetime, number, rtttl, select, smart_display, switch, text
 from esphome.const import CONF_ID
 
 DEPENDENCIES = ["smart_display"]
-
-CONF_ALARM_TIME = "alarm_time"
-CONF_ENABLED = "enabled"
+AC_NS = cg.esphome_ns.namespace("alarmclock")
+AlarmClock = AC_NS.class_("AlarmClock", cg.Component)
 CONF_TONE = "tone"
-
-alarmclock_ns = cg.esphome_ns.namespace("alarmclock")
-AlarmClock = alarmclock_ns.class_("AlarmClock", cg.Component)
-
-CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(AlarmClock),
-    cv.Required(CONF_ALARM_TIME): cv.use_id(datetime.TimeEntity),
-    cv.Required(CONF_ENABLED): cv.use_id(switch.Switch),
-    cv.Required(CONF_TONE): cv.use_id(rtttl.Rtttl),
-}).extend(cv.COMPONENT_SCHEMA)
-
+FIELDS = {
+    "time": datetime.TimeEntity,
+    "date": datetime.DateEntity,
+    "enabled": switch.Switch,
+    "mode": select.Select,
+    "tone": select.Select,
+    "snooze": select.Select,
+    "volume": number.Number,
+    "days": text.Text,
+}
+_schema = {cv.GenerateID(): cv.declare_id(AlarmClock), cv.Required(CONF_TONE): cv.use_id(rtttl.Rtttl)}
+for index in range(1, 6):
+    for field, typ in FIELDS.items():
+        _schema[cv.Required(f"{field}_{index}")] = cv.use_id(typ)
+CONFIG_SCHEMA = cv.Schema(_schema).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await smart_display.register_plugin(var, __file__)
-    cg.add(var.set_alarm_time(await cg.get_variable(config[CONF_ALARM_TIME])))
-    cg.add(var.set_enabled(await cg.get_variable(config[CONF_ENABLED])))
-    cg.add(var.set_tone(await cg.get_variable(config[CONF_TONE])))
+    cg.add(var.set_tone_player(await cg.get_variable(config[CONF_TONE])))
+    for i in range(1, 6):
+        for field in FIELDS:
+            cg.add(getattr(var, f"set_{field}")(i - 1, await cg.get_variable(config[f"{field}_{i}"])))

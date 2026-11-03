@@ -1,37 +1,421 @@
-# Tessera AlarmClock 0.0.5: one local test alarm, native time input.
-# Uses the existing guition_tone RTTTL instance from Hilde's audio override.
+# Tessera AlarmClock 0.1.0 | five persistent alarms, using existing guition_tone RTTTL
+
 datetime:
   - platform: template
-    id: alarmclock_time
+    id: ac_time_1
+    name: "AlarmClock 1 Uhrzeit"
     type: time
-    name: "AlarmClock Wecker 1 Uhrzeit"
-    icon: mdi:clock-outline
-    entity_category: config
     optimistic: true
     restore_value: true
     initial_value: "07:00:00"
+  - platform: template
+    id: ac_date_1
+    name: "AlarmClock 1 Datum"
+    type: date
+    optimistic: true
+    restore_value: true
+    initial_value: "2026-11-04"
+  - platform: template
+    id: ac_time_2
+    name: "AlarmClock 2 Uhrzeit"
+    type: time
+    optimistic: true
+    restore_value: true
+    initial_value: "08:00:00"
+  - platform: template
+    id: ac_date_2
+    name: "AlarmClock 2 Datum"
+    type: date
+    optimistic: true
+    restore_value: true
+    initial_value: "2026-11-04"
+  - platform: template
+    id: ac_time_3
+    name: "AlarmClock 3 Uhrzeit"
+    type: time
+    optimistic: true
+    restore_value: true
+    initial_value: "09:00:00"
+  - platform: template
+    id: ac_date_3
+    name: "AlarmClock 3 Datum"
+    type: date
+    optimistic: true
+    restore_value: true
+    initial_value: "2026-11-04"
+  - platform: template
+    id: ac_time_4
+    name: "AlarmClock 4 Uhrzeit"
+    type: time
+    optimistic: true
+    restore_value: true
+    initial_value: "10:00:00"
+  - platform: template
+    id: ac_date_4
+    name: "AlarmClock 4 Datum"
+    type: date
+    optimistic: true
+    restore_value: true
+    initial_value: "2026-11-04"
+  - platform: template
+    id: ac_time_5
+    name: "AlarmClock 5 Uhrzeit"
+    type: time
+    optimistic: true
+    restore_value: true
+    initial_value: "11:00:00"
+  - platform: template
+    id: ac_date_5
+    name: "AlarmClock 5 Datum"
+    type: date
+    optimistic: true
+    restore_value: true
+    initial_value: "2026-11-04"
+
 switch:
   - platform: template
-    id: alarmclock_enabled
-    name: "AlarmClock Wecker 1 aktiv"
+    id: ac_enabled_1
+    name: "AlarmClock 1 aktiv"
     icon: mdi:alarm
-    entity_category: config
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
+  - platform: template
+    id: ac_enabled_2
+    name: "AlarmClock 2 aktiv"
+    icon: mdi:alarm
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: template
+    id: ac_enabled_3
+    name: "AlarmClock 3 aktiv"
+    icon: mdi:alarm
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: template
+    id: ac_enabled_4
+    name: "AlarmClock 4 aktiv"
+    icon: mdi:alarm
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: template
+    id: ac_enabled_5
+    name: "AlarmClock 5 aktiv"
+    icon: mdi:alarm
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+select:
+  - platform: template
+    id: ac_mode_1
+    name: "AlarmClock 1 Modus"
+    optimistic: true
+    restore_value: true
+    initial_option: "Next"
+    options:
+      - "Next"
+      - "Date"
+      - "Weekly"
+  - platform: template
+    id: ac_tone_1
+    name: "AlarmClock 1 Klang"
+    optimistic: true
+    restore_value: true
+    initial_option: "Gentle"
+    options:
+      - "Classic"
+      - "Gentle"
+      - "Digital"
+      - "Sunrise"
+      - "Urgent"
+  - platform: template
+    id: ac_snooze_1
+    name: "AlarmClock 1 Schlummerminuten"
+    optimistic: true
+    restore_value: true
+    initial_option: "5"
+    options:
+      - "5"
+      - "10"
+  - platform: template
+    id: ac_mode_2
+    name: "AlarmClock 2 Modus"
+    optimistic: true
+    restore_value: true
+    initial_option: "Next"
+    options:
+      - "Next"
+      - "Date"
+      - "Weekly"
+  - platform: template
+    id: ac_tone_2
+    name: "AlarmClock 2 Klang"
+    optimistic: true
+    restore_value: true
+    initial_option: "Gentle"
+    options:
+      - "Classic"
+      - "Gentle"
+      - "Digital"
+      - "Sunrise"
+      - "Urgent"
+  - platform: template
+    id: ac_snooze_2
+    name: "AlarmClock 2 Schlummerminuten"
+    optimistic: true
+    restore_value: true
+    initial_option: "5"
+    options:
+      - "5"
+      - "10"
+  - platform: template
+    id: ac_mode_3
+    name: "AlarmClock 3 Modus"
+    optimistic: true
+    restore_value: true
+    initial_option: "Next"
+    options:
+      - "Next"
+      - "Date"
+      - "Weekly"
+  - platform: template
+    id: ac_tone_3
+    name: "AlarmClock 3 Klang"
+    optimistic: true
+    restore_value: true
+    initial_option: "Gentle"
+    options:
+      - "Classic"
+      - "Gentle"
+      - "Digital"
+      - "Sunrise"
+      - "Urgent"
+  - platform: template
+    id: ac_snooze_3
+    name: "AlarmClock 3 Schlummerminuten"
+    optimistic: true
+    restore_value: true
+    initial_option: "5"
+    options:
+      - "5"
+      - "10"
+  - platform: template
+    id: ac_mode_4
+    name: "AlarmClock 4 Modus"
+    optimistic: true
+    restore_value: true
+    initial_option: "Next"
+    options:
+      - "Next"
+      - "Date"
+      - "Weekly"
+  - platform: template
+    id: ac_tone_4
+    name: "AlarmClock 4 Klang"
+    optimistic: true
+    restore_value: true
+    initial_option: "Gentle"
+    options:
+      - "Classic"
+      - "Gentle"
+      - "Digital"
+      - "Sunrise"
+      - "Urgent"
+  - platform: template
+    id: ac_snooze_4
+    name: "AlarmClock 4 Schlummerminuten"
+    optimistic: true
+    restore_value: true
+    initial_option: "5"
+    options:
+      - "5"
+      - "10"
+  - platform: template
+    id: ac_mode_5
+    name: "AlarmClock 5 Modus"
+    optimistic: true
+    restore_value: true
+    initial_option: "Next"
+    options:
+      - "Next"
+      - "Date"
+      - "Weekly"
+  - platform: template
+    id: ac_tone_5
+    name: "AlarmClock 5 Klang"
+    optimistic: true
+    restore_value: true
+    initial_option: "Gentle"
+    options:
+      - "Classic"
+      - "Gentle"
+      - "Digital"
+      - "Sunrise"
+      - "Urgent"
+  - platform: template
+    id: ac_snooze_5
+    name: "AlarmClock 5 Schlummerminuten"
+    optimistic: true
+    restore_value: true
+    initial_option: "5"
+    options:
+      - "5"
+      - "10"
+
+number:
+  - platform: template
+    id: ac_volume_1
+    name: "AlarmClock 1 Lautstärke"
+    optimistic: true
+    restore_value: true
+    initial_value: 60
+    min_value: 10
+    max_value: 100
+    step: 10
+    unit_of_measurement: "%"
+    mode: slider
+  - platform: template
+    id: ac_volume_2
+    name: "AlarmClock 2 Lautstärke"
+    optimistic: true
+    restore_value: true
+    initial_value: 60
+    min_value: 10
+    max_value: 100
+    step: 10
+    unit_of_measurement: "%"
+    mode: slider
+  - platform: template
+    id: ac_volume_3
+    name: "AlarmClock 3 Lautstärke"
+    optimistic: true
+    restore_value: true
+    initial_value: 60
+    min_value: 10
+    max_value: 100
+    step: 10
+    unit_of_measurement: "%"
+    mode: slider
+  - platform: template
+    id: ac_volume_4
+    name: "AlarmClock 4 Lautstärke"
+    optimistic: true
+    restore_value: true
+    initial_value: 60
+    min_value: 10
+    max_value: 100
+    step: 10
+    unit_of_measurement: "%"
+    mode: slider
+  - platform: template
+    id: ac_volume_5
+    name: "AlarmClock 5 Lautstärke"
+    optimistic: true
+    restore_value: true
+    initial_value: 60
+    min_value: 10
+    max_value: 100
+    step: 10
+    unit_of_measurement: "%"
+    mode: slider
+
+text:
+  - platform: template
+    id: ac_days_1
+    name: "AlarmClock 1 Wochentage"
+    optimistic: true
+    restore_value: true
+    initial_value: "Mo,Di,Mi,Do,Fr"
+    min_length: 0
+    max_length: 32
+    mode: text
+  - platform: template
+    id: ac_days_2
+    name: "AlarmClock 2 Wochentage"
+    optimistic: true
+    restore_value: true
+    initial_value: "Mo,Di,Mi,Do,Fr"
+    min_length: 0
+    max_length: 32
+    mode: text
+  - platform: template
+    id: ac_days_3
+    name: "AlarmClock 3 Wochentage"
+    optimistic: true
+    restore_value: true
+    initial_value: "Mo,Di,Mi,Do,Fr"
+    min_length: 0
+    max_length: 32
+    mode: text
+  - platform: template
+    id: ac_days_4
+    name: "AlarmClock 4 Wochentage"
+    optimistic: true
+    restore_value: true
+    initial_value: "Mo,Di,Mi,Do,Fr"
+    min_length: 0
+    max_length: 32
+    mode: text
+  - platform: template
+    id: ac_days_5
+    name: "AlarmClock 5 Wochentage"
+    optimistic: true
+    restore_value: true
+    initial_value: "Mo,Di,Mi,Do,Fr"
+    min_length: 0
+    max_length: 32
+    mode: text
+
 button:
   - platform: template
     name: "AlarmClock Testalarm"
-    icon: mdi:volume-high
     entity_category: diagnostic
     on_press:
       - lambda: 'id(alarm_clock).start_test();'
   - platform: template
     name: "AlarmClock Alarm stoppen"
-    icon: mdi:alarm-off
     on_press:
-      - lambda: 'id(alarm_clock).stop_alarm();'
+      - lambda: 'id(alarm_clock).stop_all();'
+
 alarmclock:
   id: alarm_clock
-  alarm_time: alarmclock_time
-  enabled: alarmclock_enabled
   tone: guition_tone
+  time_1: ac_time_1
+  date_1: ac_date_1
+  enabled_1: ac_enabled_1
+  mode_1: ac_mode_1
+  tone_1: ac_tone_1
+  snooze_1: ac_snooze_1
+  volume_1: ac_volume_1
+  days_1: ac_days_1
+  time_2: ac_time_2
+  date_2: ac_date_2
+  enabled_2: ac_enabled_2
+  mode_2: ac_mode_2
+  tone_2: ac_tone_2
+  snooze_2: ac_snooze_2
+  volume_2: ac_volume_2
+  days_2: ac_days_2
+  time_3: ac_time_3
+  date_3: ac_date_3
+  enabled_3: ac_enabled_3
+  mode_3: ac_mode_3
+  tone_3: ac_tone_3
+  snooze_3: ac_snooze_3
+  volume_3: ac_volume_3
+  days_3: ac_days_3
+  time_4: ac_time_4
+  date_4: ac_date_4
+  enabled_4: ac_enabled_4
+  mode_4: ac_mode_4
+  tone_4: ac_tone_4
+  snooze_4: ac_snooze_4
+  volume_4: ac_volume_4
+  days_4: ac_days_4
+  time_5: ac_time_5
+  date_5: ac_date_5
+  enabled_5: ac_enabled_5
+  mode_5: ac_mode_5
+  tone_5: ac_tone_5
+  snooze_5: ac_snooze_5
+  volume_5: ac_volume_5
+  days_5: ac_days_5
