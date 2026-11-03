@@ -1,0 +1,4 @@
+type: custom:tessera-alarmclock-card
+title: Wecker
+# Optional nur, wenn mehrere ESPHome-AlarmClock-Geräte existieren:
+# device_filter: andy

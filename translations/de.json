@@ -4,8 +4,8 @@
   },
   "screen": {
     "tile_title": "Nächster Wecker",
-    "list_title": "Fünf Wecker",
-    "list_hint": "Tippen: ändern | rechts: An/Aus",
+    "list_title": "Meine Wecker",
+    "list_hint": "Maximal fünf Wecker · Lokal gespeichert",
     "ringing": "ALARM!",
     "clock_missing": "Warte auf gültige Uhrzeit",
     "alarm": "Wecker",
@@ -31,13 +31,33 @@
     "tone_gentle": "Sanft",
     "tone_digital": "Digital",
     "tone_sunrise": "Sonnenaufgang",
-    "tone_urgent": "Dringend"
+    "tone_urgent": "Dringend",
+    "hero_title": "Wecker",
+    "hero_footer": "Öffnen & verwalten",
+    "ringing_hint": "Alarm aktiv",
+    "no_alarms": "Noch kein Wecker",
+    "list_subtitle": "Antippen: bearbeiten  |  rechts: AN/AUS",
+    "add_alarm": "+ Wecker hinzufügen",
+    "empty_list": "Tippe auf + Wecker hinzufügen",
+    "edit_alarm": "Wecker bearbeiten",
+    "step_type": "1 · Typ",
+    "step_time": "2 · Uhrzeit",
+    "step_date": "3 · Datum",
+    "step_days": "3 · Wochentage",
+    "step_sound": "4 · Alarmton",
+    "step_options": "5 · Optionen",
+    "step_review": "6 · Prüfen",
+    "continue": "Weiter",
+    "preview_tone": "▶ Hörprobe",
+    "name": "Name",
+    "delete_alarm": "Wecker löschen",
+    "delete_confirm": "Diesen Wecker wirklich löschen?"
   },
   "app": {
     "name": "AlarmClock",
-    "summary": "Fünf eigenständige Wecker mit Drehrad, Home Assistant und lokalen Alarmen.",
+    "summary": "Eigenständiger Wecker mit intuitivem Einrichtungsassistenten und Home Assistant.",
     "tile_name": "Nächster Wecker",
     "tile_example": "07:00",
-    "card_name": "Fünf Wecker"
+    "card_name": "Meine Wecker"
   }
 }

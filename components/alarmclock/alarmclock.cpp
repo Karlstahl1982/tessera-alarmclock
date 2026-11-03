@@ -9,7 +9,7 @@ namespace ui = tessera::ui;
 using tessera::Font;
 
 namespace {
-constexpr const char *DAYS[] = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
+constexpr const char *DAY_ABBR[] = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
 constexpr const char *MODES[] = {"Next", "Date", "Weekly"};
 constexpr const char *TUNES[] = {"Classic", "Gentle", "Digital", "Sunrise", "Urgent"};
 // Five short original sequences; RTTTL playback loops until the alarm ends.
@@ -61,33 +61,50 @@ class NextAlarmTile final : public tessera::Tile {
  public:
   explicit NextAlarmTile(AlarmClock *p) : p_(p) {}
   void create(const tessera::TileContext &c) override {
-    index_ = c.tile;
-    name_ = ui::label(c.parent, Font::TITLE, theme::INK);
-    value_ = ui::label(c.parent, Font::VALUE, theme::INK);
-    const int name_h = ui::line_height(Font::TITLE);
-    const int value_h = ui::line_height(Font::VALUE);
-    const int y = std::max(0, (c.height - name_h - value_h - ui::px(4)) / 2);
-    place_label(name_, 0, y, c.width, name_h, p_->text("tile_title"));
-    place_label(value_, 0, y + name_h + ui::px(4), c.width, value_h, "--:--");
+    tile_ = c.tile;
+    w_ = c.width;
+    h_ = c.height;
+    heading_ = ui::label(c.parent, Font::TITLE, theme::INK);
+    clock_ = ui::label(c.parent, Font::VALUE, theme::INK);
+    detail_ = ui::label(c.parent, Font::BODY_LARGE, theme::MUTED);
+    footer_ = ui::label(c.parent, Font::BODY, theme::MUTED);
     on_tick(0);
   }
   void on_tick(uint32_t) override {
-    if (p_->any_ringing()) { ui::set_text(value_, p_->text("ringing")); return; }
-    int n = p_->next_alarm();
-    if (n < 0) { ui::set_text(value_, "--:--"); return; }
-    char buffer[20];
-    std::snprintf(buffer, sizeof(buffer), "%02d:%02d", p_->hour(n), p_->minute(n));
-    ui::set_text(value_, buffer);
+    if (!clock_) return;
+    place_label(heading_, 0, ui::px(5), w_, ui::line_height(Font::TITLE), p_->text("hero_title"));
+    const int big_h = std::min(h_ / 2, ui::px(85));
+    place_label(clock_, 0, std::max(ui::px(25), (h_ - big_h) / 2 - ui::px(10)), w_, big_h, "--:--");
+    const int n = p_->next_alarm();
+    char value[72];
+    if (p_->any_ringing()) {
+      ui::set_text(clock_, p_->text("ringing"));
+      std::snprintf(value, sizeof(value), "%s", p_->text("ringing_hint"));
+    } else if (n < 0) {
+      std::snprintf(value, sizeof(value), "%s", p_->text("no_alarms"));
+    } else {
+      char time[12];
+      std::snprintf(time, sizeof(time), "%02d:%02d", p_->hour(n), p_->minute(n));
+      ui::set_text(clock_, time);
+      std::snprintf(value, sizeof(value), "%s", p_->alarm_name(n));
+    }
+    const int bottom_y = std::max(ui::px(60), h_ - ui::px(64));
+    place_label(detail_, 0, bottom_y, w_, ui::line_height(Font::BODY_LARGE), value);
+    char footer[68];
+    std::snprintf(footer, sizeof(footer), "%d / 5  |  %s", p_->occupied_count(), p_->text("hero_footer"));
+    place_label(footer_, 0, h_ - ui::px(27), w_, ui::px(25), footer);
   }
   void on_theme() override {
-    ui::set_color(name_, theme::INK);
-    ui::set_color(value_, theme::INK);
+    ui::set_color(heading_, theme::INK);
+    ui::set_color(clock_, theme::INK);
+    ui::set_color(detail_, theme::MUTED);
+    ui::set_color(footer_, theme::MUTED);
   }
-  void on_tap() override { tessera::open_card(p_->plugin_id(), "overview", "", index_); }
+  void on_tap() override { tessera::open_card(p_->plugin_id(), "overview", "", tile_); }
  private:
   AlarmClock *p_{};
-  int index_{-1};
-  lv_obj_t *name_{}, *value_{};
+  int tile_{-1}, w_{0}, h_{0};
+  lv_obj_t *heading_{}, *clock_{}, *detail_{}, *footer_{};
 };
 
 class AlarmOverview final : public tessera::Card {
@@ -97,188 +114,322 @@ class AlarmOverview final : public tessera::Card {
     w_ = c.width;
     h_ = c.height;
     title_ = ui::label(c.parent, Font::TITLE, theme::INK);
-    rows_[0] = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
-    for (int i = 1; i < 7; ++i) rows_[i] = ui::label(c.parent, Font::BODY, theme::INK);
-    for (int i = 0; i < 7; ++i) days_[i] = ui::label(c.parent, Font::BODY, theme::INK);
-    footer_ = ui::label(c.parent, Font::BODY, theme::MUTED);
+    subtitle_ = ui::label(c.parent, Font::BODY, theme::MUTED);
+    for (auto &r : rows_) r = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
+    for (auto &r : days_) r = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
+    back_ = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
+    next_ = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
     hour_ = lv_roller_create(c.parent);
     minute_ = lv_roller_create(c.parent);
     day_ = lv_roller_create(c.parent);
     month_ = lv_roller_create(c.parent);
     year_ = lv_roller_create(c.parent);
-    // Native LVGL rollers handle swipes; the Save / Options rows use Tessera's filtered on_tap.
-    const auto hours = list_numbers(0,23,2);
-    const auto minutes = list_numbers(0,59,2);
-    const auto dates = list_numbers(1,31,2);
-    const auto months = list_numbers(1,12,2);
-    const auto years = list_numbers(2025,2045,4);
-    lv_roller_set_options(hour_, hours.c_str(), LV_ROLLER_MODE_INFINITE);
-    lv_roller_set_options(minute_, minutes.c_str(), LV_ROLLER_MODE_INFINITE);
-    lv_roller_set_options(day_, dates.c_str(), LV_ROLLER_MODE_NORMAL);
-    lv_roller_set_options(month_, months.c_str(), LV_ROLLER_MODE_NORMAL);
-    lv_roller_set_options(year_, years.c_str(), LV_ROLLER_MODE_NORMAL);
+    const auto hh = list_numbers(0, 23, 2);
+    const auto mm = list_numbers(0, 59, 2);
+    const auto dd = list_numbers(1, 31, 2);
+    const auto mo = list_numbers(1, 12, 2);
+    const auto yy = list_numbers(2025, 2045, 4);
+    lv_roller_set_options(hour_, hh.c_str(), LV_ROLLER_MODE_INFINITE);
+    lv_roller_set_options(minute_, mm.c_str(), LV_ROLLER_MODE_INFINITE);
+    lv_roller_set_options(day_, dd.c_str(), LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_options(month_, mo.c_str(), LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_options(year_, yy.c_str(), LV_ROLLER_MODE_NORMAL);
     for (auto *r : {hour_, minute_, day_, month_, year_}) {
       lv_roller_set_visible_row_count(r, 3);
       color_roller(r);
     }
     render_();
   }
-  void on_tick(uint32_t) override { render_(); }
-  void on_theme() override {
-    ui::set_color(title_, theme::INK);
-    for (auto *l : rows_) ui::set_color(l, theme::INK);
-    for (auto *l : days_) ui::set_color(l, theme::INK);
-    ui::set_color(footer_, theme::MUTED);
-    for (auto *r : {hour_,minute_,day_,month_,year_}) color_roller(r);
-  }
+  void on_tick(uint32_t) override { if (screen_ == LIST || screen_ == REVIEW) render_(); }
+  void on_theme() override { render_(); }
   bool on_back() override {
-    if (screen_ != OVERVIEW) { screen_ = OVERVIEW; render_(); return true; }
+    if (screen_ != LIST) { screen_ = LIST; render_(); return true; }
     return false;
   }
   void on_tap() override {
     const auto pt = tessera::tap_point();
     if (pt.x < 0 || pt.y < 0) return;
     const int x = pt.x, y = pt.y;
-    if (screen_ == OVERVIEW) {
-      const int top = ui::px(32);
-      const int row_height = std::max(ui::mm(9), (h_ - top - ui::px(25)) / 5);
-      const int index = (y - top) / row_height;
-      if (index >= 0 && index < 5) {
-        selected_ = index;
-        if (x > w_ * 4 / 5) p_->set_active(index, !p_->enabled(index));
-        else begin_time_();
+    if (screen_ == LIST) {
+      int row = (y - list_top_()) / std::max(1, list_rh_());
+      if (y >= list_top_() && row >= 0 && row < listed_) {
+        const int slot = visible_[row];
+        if (x > w_ * 4 / 5) p_->set_active(slot, !p_->enabled(slot));
+        else begin_edit_(slot);
+      } else if (y >= list_top_() && row == listed_ && listed_ < AlarmClock::COUNT) {
+        begin_new_();
       }
-    } else if (screen_ == TIME) {
-      if (y > h_ - ui::mm(14)) { save_time_(); screen_ = OVERVIEW; }
-      else if (y > h_ - ui::mm(29)) { save_time_(); screen_ = DETAILS; }
-    } else if (screen_ == DETAILS) {
-      details_tap_(x,y);
-    } else if (screen_ == DATE) {
-      if (y > h_ - ui::mm(14)) { save_date_(); screen_ = DETAILS; }
+    } else {
+      const int btn_y = h_ - ui::px(48);
+      if (y >= btn_y) {
+        if (x < w_/2) previous_();
+        else next_step_();
+      } else if (screen_ == TYPE) {
+        const int row = (y-ui::px(62)) / std::max(1, option_rh_());
+        if (row >= 0 && row <= 2) draft_.mode = row;
+      } else if (screen_ == DAYS) {
+        const int col = (x * 4) / std::max(1,w_);
+        const int row = (y-ui::px(70))/std::max(1, option_rh_());
+        const int day = row*4 + col;
+        if (day>=0 && day<7) draft_.days ^= 1u<<day;
+      } else if (screen_ == SOUND) {
+        if (y>=h_-ui::px(94) && y<h_-ui::px(52)) p_->preview_tone(draft_.tone);
+        else {
+          const int rh = std::max(1,std::min(option_rh_(),(h_-ui::px(157))/5));
+          const int row = (y-ui::px(58))/rh;
+          if (y>=ui::px(58) && row>=0 && row<5) draft_.tone=row;
+        }
+      } else if (screen_ == OPTIONS) {
+        const int row=(y-ui::px(66))/std::max(1,option_rh_());
+        if (row==0) cycle_name_();
+        else if (row==1) draft_.volume=clamp_int(draft_.volume+(x<w_/2?-10:10),10,100);
+        else if (row==2) draft_.snooze=draft_.snooze==5?10:5;
+        else if (row==3) draft_.active=!draft_.active;
+      } else if (screen_==REVIEW && !new_ && y>=h_-ui::px(101) && y<h_-ui::px(52)) {
+        screen_=CONFIRM_DELETE;
+      }
     }
     render_();
   }
  private:
-  enum Screen { OVERVIEW, TIME, DETAILS, DATE } screen_{OVERVIEW};
-  void begin_time_() {
-    lv_roller_set_selected(hour_, p_->hour(selected_), LV_ANIM_OFF);
-    lv_roller_set_selected(minute_, p_->minute(selected_), LV_ANIM_OFF);
-    screen_ = TIME;
+  enum Screen { LIST, TYPE, TIME, DATE, DAYS, SOUND, OPTIONS, REVIEW, CONFIRM_DELETE };
+  struct Draft {
+    int hour{7}, minute{0}, year{2026}, month{11}, day{4};
+    int mode{0}, tone{1}, volume{60}, snooze{5};
+    uint8_t days{31};
+    bool active{true};
+    std::string name{"Wecker"};
+  } draft_{};
+  int list_top_() const { return ui::px(52); }
+  int list_rh_() const { return std::max(1, (h_-list_top_()-ui::px(58))/6); }
+  int option_rh_() const { return std::max(ui::px(35),(h_-ui::px(140))/5); }
+  void begin_edit_(int slot) {
+    selected_=slot; new_=false;
+    draft_.hour=p_->hour(slot); draft_.minute=p_->minute(slot);
+    draft_.year=p_->year(slot); draft_.month=p_->month(slot); draft_.day=p_->day(slot);
+    draft_.mode=p_->mode(slot); draft_.tone=p_->tune(slot);
+    draft_.volume=p_->volume(slot); draft_.snooze=p_->snooze_minutes(slot);
+    draft_.days=p_->weekdays(slot); draft_.active=p_->enabled(slot);
+    draft_.name=p_->alarm_name(slot);
+    screen_=TYPE;
   }
-  void save_time_() {
-    p_->set_alarm_time(selected_, lv_roller_get_selected(hour_), lv_roller_get_selected(minute_));
-  }
-  void begin_date_() {
-    lv_roller_set_selected(day_, clamp_int(p_->day(selected_),1,31)-1, LV_ANIM_OFF);
-    lv_roller_set_selected(month_, clamp_int(p_->month(selected_),1,12)-1, LV_ANIM_OFF);
-    lv_roller_set_selected(year_, clamp_int(p_->year(selected_),2025,2045)-2025, LV_ANIM_OFF);
-    screen_ = DATE;
-  }
-  void save_date_() {
-    const int y = 2025 + lv_roller_get_selected(year_);
-    const int m = 1 + lv_roller_get_selected(month_);
-    const int d = std::min(1 + static_cast<int>(lv_roller_get_selected(day_)), days_in_month(y,m));
-    p_->set_alarm_date(selected_,y,m,d);
-  }
-  void details_tap_(int x, int y) {
-    const int top = ui::px(30);
-    const int lh = std::max(ui::mm(8), (h_-top-ui::px(5))/8);
-    int row = (y-top) / lh;
-    switch (row) {
-      case 0: p_->set_alarm_mode(selected_, (p_->mode(selected_)+1)%3); break;
-      case 1: if (p_->mode(selected_) == 1) begin_date_(); break;
-      case 2: if (p_->mode(selected_) == 2) {
-          int day = clamp_int(x * 7 / std::max(1,w_),0,6);
-          p_->set_weekday(selected_,day,!p_->weekday_enabled(selected_,day));
-        } break;
-      case 3: p_->set_alarm_tone(selected_,(p_->tune(selected_)+1)%5); break;
-      case 4: p_->set_alarm_volume(selected_,p_->volume(selected_) >= 100 ? 10 : p_->volume(selected_)+10); break;
-      case 5: p_->set_snooze_minutes(selected_,p_->snooze_minutes(selected_)==5 ? 10 : 5); break;
-      case 6: p_->set_active(selected_,!p_->enabled(selected_)); break;
-      case 7: screen_=OVERVIEW; break;
+  void begin_new_() {
+    int free_slot=-1;
+    for (int i=0;i<AlarmClock::COUNT;++i) if(!p_->occupied(i)) {free_slot=i; break;}
+    if(free_slot<0) return;
+    selected_=free_slot; new_=true; draft_=Draft{};
+    char b[24]; std::snprintf(b,sizeof(b),"Wecker %d",selected_+1); draft_.name=b;
+    if(p_->time_valid()) {
+      auto dt=tessera::local_time(tessera::epoch());
+      draft_.year=dt.year; draft_.month=dt.month; draft_.day=dt.day;
     }
+    screen_=TYPE;
+  }
+  void init_time_wheels_() {
+    lv_roller_set_selected(hour_, draft_.hour, LV_ANIM_OFF);
+    lv_roller_set_selected(minute_, draft_.minute, LV_ANIM_OFF);
+  }
+  void init_date_wheels_() {
+    lv_roller_set_selected(day_, clamp_int(draft_.day,1,31)-1,LV_ANIM_OFF);
+    lv_roller_set_selected(month_,clamp_int(draft_.month,1,12)-1,LV_ANIM_OFF);
+    lv_roller_set_selected(year_,clamp_int(draft_.year,2025,2045)-2025,LV_ANIM_OFF);
+  }
+  void capture_time_() {
+    draft_.hour=lv_roller_get_selected(hour_);
+    draft_.minute=lv_roller_get_selected(minute_);
+  }
+  void capture_date_() {
+    draft_.year=2025+lv_roller_get_selected(year_);
+    draft_.month=1+lv_roller_get_selected(month_);
+    draft_.day=std::min(1+int(lv_roller_get_selected(day_)),days_in_month(draft_.year,draft_.month));
+  }
+  void cycle_name_() {
+    static constexpr const char *PRESETS[]={"Wecker","Schule","Arbeit","Termin","Früh","Freizeit"};
+    int current=-1;
+    for (int i=0;i<6;++i) if(draft_.name==PRESETS[i]) current=i;
+    draft_.name=PRESETS[(current+1)%6];
+  }
+  void previous_() {
+    switch(screen_) {
+      case TYPE: screen_=LIST; break;
+      case TIME: capture_time_(); screen_=TYPE; break;
+      case DATE: capture_date_(); screen_=TIME; init_time_wheels_(); break;
+      case DAYS: screen_=TIME; init_time_wheels_(); break;
+      case SOUND: {
+        if(draft_.mode==1) { screen_=DATE; init_date_wheels_(); }
+        else if(draft_.mode==2) { screen_=DAYS; }
+        else { screen_=TIME; init_time_wheels_(); }
+        break;
+      }
+      case OPTIONS: screen_=SOUND; break;
+      case REVIEW: screen_=OPTIONS; break;
+      case CONFIRM_DELETE: screen_=REVIEW; break;
+      default: screen_=LIST; break;
+    }
+  }
+  void next_step_() {
+    switch(screen_) {
+      case TYPE: screen_=TIME; init_time_wheels_(); break;
+      case TIME: {
+        capture_time_();
+        if(draft_.mode==1){screen_=DATE;init_date_wheels_();}
+        else if(draft_.mode==2){screen_=DAYS;}
+        else {screen_=SOUND;}
+        break;
+      }
+      case DATE: capture_date_(); screen_=SOUND; break;
+      case DAYS: if(!draft_.days) draft_.days=31; screen_=SOUND; break;
+      case SOUND: screen_=OPTIONS; break;
+      case OPTIONS: screen_=REVIEW; break;
+      case REVIEW: save_(); screen_=LIST; break;
+      case CONFIRM_DELETE: p_->set_active(selected_,false); p_->set_occupied(selected_,false);
+                           screen_=LIST; break;
+      default: screen_=LIST; break;
+    }
+  }
+  void save_() {
+    if (selected_<0) return;
+    p_->set_active(selected_,false);
+    p_->set_alarm_time(selected_,draft_.hour,draft_.minute);
+    p_->set_alarm_date(selected_,draft_.year,draft_.month,draft_.day);
+    p_->set_alarm_mode(selected_,draft_.mode);
+    p_->set_alarm_tone(selected_,draft_.tone);
+    p_->set_alarm_volume(selected_,draft_.volume);
+    p_->set_snooze_minutes(selected_,draft_.snooze);
+    for(int d=0;d<7;++d) p_->set_weekday(selected_,d,(draft_.days&(1<<d))!=0);
+    p_->set_alarm_name(selected_,draft_.name);
+    p_->set_occupied(selected_,true);
+    p_->set_active(selected_,draft_.active);
+  }
+  void hide_all_() {
+    for(auto *r:rows_) toggle_hidden(r,false);
+    for(auto *d:days_) toggle_hidden(d,false);
+    for(auto *r:{hour_,minute_,day_,month_,year_}) toggle_hidden(r,false);
+    toggle_hidden(title_,true); toggle_hidden(subtitle_,true);
+    toggle_hidden(back_,false);toggle_hidden(next_,false);
+  }
+  void chip_(lv_obj_t *label,int x,int y,int width,int height,const char *value,bool selected=false) {
+    place_label(label,x,y,width,height,value);
+    lv_obj_set_style_bg_opa(label,LV_OPA_COVER,0);
+    lv_obj_set_style_bg_color(label,ui::color(selected?theme::ACCENT:theme::CARD),0);
+    lv_obj_set_style_radius(label,ui::px(10),0);
+    lv_obj_set_style_pad_hor(label,ui::px(4),0);
+    lv_obj_set_style_text_color(label,ui::color(selected?theme::ON_ACCENT:theme::INK),0);
+  }
+  void footer_(const char *next) {
+    chip_(back_,ui::px(4),h_-ui::px(47),w_/2-ui::px(7),ui::px(43),p_->text("back"));
+    chip_(next_,w_/2+ui::px(3),h_-ui::px(47),w_/2-ui::px(7),ui::px(43),next,true);
+    toggle_hidden(back_,true);toggle_hidden(next_,true);
+  }
+  void heading_(const char *title,const char *sub) {
+    place_label(title_,0,0,w_,ui::px(31),title);
+    place_label(subtitle_,0,ui::px(31),w_,ui::px(25),sub);
   }
   void render_() {
     if (!title_) return;
-    for (auto *r : {hour_,minute_,day_,month_,year_}) toggle_hidden(r,false);
-    for (auto *row : rows_) toggle_hidden(row,false);
-    for (auto *day : days_) toggle_hidden(day,false);
-    toggle_hidden(footer_,true);
-    toggle_hidden(title_,true);
-    char buf[110];
-    const int lh = ui::line_height(Font::BODY);
-    if (screen_ == OVERVIEW) {
-      ui::set_text(title_, p_->text("list_title"));
-      lv_obj_set_pos(title_, 0, 0);
-      lv_obj_set_width(title_, w_);
-      const int top = ui::px(32);
-      const int row_h = std::max(ui::mm(9),(h_-top-ui::px(25))/5);
-      for (int i = 0; i < 5; ++i) {
-        std::snprintf(buf,sizeof(buf),"%d    %02d:%02d   %s",i+1,p_->hour(i),p_->minute(i),p_->enabled(i)?p_->text("on"):p_->text("off"));
-        place_label(rows_[i], 0, top+i*row_h, w_, row_h, buf);
+    hide_all_();
+    char b[140];
+    if (screen_==LIST) {
+      heading_(p_->text("list_title"),p_->text("list_subtitle"));
+      listed_=0;
+      for(int i=0;i<AlarmClock::COUNT;++i) if(p_->occupied(i)) visible_[listed_++]=i;
+      for(int row=0;row<listed_;++row) {
+        const int i=visible_[row];
+        std::snprintf(b,sizeof(b),"%02d:%02d   %s   %s",p_->hour(i),p_->minute(i),p_->alarm_name(i),p_->enabled(i)?"AN":"AUS");
+        chip_(rows_[row],ui::px(2),list_top_()+row*list_rh_(),w_-ui::px(4),list_rh_()-ui::px(3),b,false);
+        toggle_hidden(rows_[row],true);
       }
-      place_label(footer_,0,h_-lh,w_,lh,p_->time_valid()?p_->text("list_hint"):p_->text("clock_missing"));
-    } else if (screen_ == TIME) {
-      std::snprintf(buf,sizeof(buf),"%s %d",p_->text("alarm"),selected_+1);
-      place_label(title_,0,0,w_,ui::line_height(Font::TITLE),buf);
-      const int rw = std::min(ui::px(132), (w_-ui::px(30))/2);
-      const int ry = std::max(ui::px(42), (h_-ui::px(210))/2);
-      lv_obj_set_size(hour_,rw,ui::px(166));
-      lv_obj_set_size(minute_,rw,ui::px(166));
-      lv_obj_set_pos(hour_,w_/2-rw-ui::px(5),ry);
-      lv_obj_set_pos(minute_,w_/2+ui::px(5),ry);
-      toggle_hidden(hour_,true);
-      toggle_hidden(minute_,true);
-      place_label(rows_[0],0,h_-ui::mm(27),w_,ui::mm(12),p_->text("options"));
-      place_label(rows_[1],0,h_-ui::mm(13),w_,ui::mm(12),p_->text("save"));
-    } else if (screen_ == DATE) {
-      std::snprintf(buf,sizeof(buf),"%s %d",p_->text("date"),selected_+1);
-      place_label(title_,0,0,w_,ui::line_height(Font::TITLE),buf);
-      int rw=std::max(40,(w_-ui::px(24))/3);
-      const int ry=std::max(ui::px(40),(h_-ui::px(200))/2);
-      lv_obj_set_size(day_,rw,ui::px(150));
-      lv_obj_set_size(month_,rw,ui::px(150));
-      lv_obj_set_size(year_,rw,ui::px(150));
-      lv_obj_set_pos(day_,0,ry);
-      lv_obj_set_pos(month_,rw+ui::px(7),ry);
-      lv_obj_set_pos(year_,2*(rw+ui::px(7)),ry);
-      toggle_hidden(day_,true); toggle_hidden(month_,true); toggle_hidden(year_,true);
-      place_label(rows_[0],0,h_-ui::mm(13),w_,ui::mm(12),p_->text("save"));
-    } else if (screen_ == DETAILS) {
-      const int top = ui::px(30);
-      const int rh = std::max(ui::mm(8),(h_-top-ui::px(5))/8);
-      std::snprintf(buf,sizeof(buf),"%s %d",p_->text("options"),selected_+1);
-      place_label(title_,0,0,w_,ui::line_height(Font::TITLE),buf);
-      std::snprintf(buf,sizeof(buf),"%s: %s",p_->text("mode"),p_->mode_label(selected_));
-      place_label(rows_[0],0,top+0*rh,w_,rh,buf);
-      std::snprintf(buf,sizeof(buf),"%s: %04d-%02d-%02d",p_->text("date"),p_->year(selected_),p_->month(selected_),p_->day(selected_));
-      place_label(rows_[1],0,top+1*rh,w_,rh,buf);
-      if (p_->mode(selected_) == 2) {
-        toggle_hidden(rows_[2], false);
-        const int cw=w_/7;
-        for (int i=0;i<7;++i) {
-          place_label(days_[i],i*cw,top+2*rh,cw,rh,DAYS[i]);
-          ui::set_color(days_[i],p_->weekday_enabled(selected_,i)?theme::ACCENT:theme::MUTED);
-          toggle_hidden(days_[i],true);
-        }
-      } else {
-        place_label(rows_[2],0,top+2*rh,w_,rh,p_->text("weekdays_off"));
+      if (listed_<AlarmClock::COUNT) {
+        chip_(rows_[listed_],ui::px(2),list_top_()+listed_*list_rh_(),w_-ui::px(4),list_rh_()-ui::px(3),p_->text("add_alarm"),true);
+        toggle_hidden(rows_[listed_],true);
       }
-      std::snprintf(buf,sizeof(buf),"%s: %s",p_->text("tone"),p_->tone_label(selected_));
-      place_label(rows_[3],0,top+3*rh,w_,rh,buf);
-      std::snprintf(buf,sizeof(buf),"%s: %d%%",p_->text("volume"),p_->volume(selected_));
-      place_label(rows_[4],0,top+4*rh,w_,rh,buf);
-      std::snprintf(buf,sizeof(buf),"%s: %d min",p_->text("snooze"),p_->snooze_minutes(selected_));
-      place_label(rows_[5],0,top+5*rh,w_,rh,buf);
-      std::snprintf(buf,sizeof(buf),"%s: %s",p_->text("enabled"),p_->enabled(selected_)?p_->text("on"):p_->text("off"));
-      place_label(rows_[6],0,top+6*rh,w_,rh,buf);
-      place_label(footer_,0,top+7*rh,w_,rh,p_->text("back"));
+      if (!listed_) place_label(subtitle_,0,h_/2,w_,ui::px(35),p_->text("empty_list"));
+      place_label(rows_[7],0,h_-ui::px(37),w_,ui::px(32),p_->time_valid()?p_->text("list_hint"):p_->text("clock_missing"));
+      toggle_hidden(rows_[7],true);
+      return;
+    }
+    const char *step="";
+    switch(screen_) {
+      case TYPE: step=p_->text("step_type");break;
+      case TIME: step=p_->text("step_time");break;
+      case DATE: step=p_->text("step_date");break;
+      case DAYS: step=p_->text("step_days");break;
+      case SOUND: step=p_->text("step_sound");break;
+      case OPTIONS: step=p_->text("step_options");break;
+      case REVIEW: step=p_->text("step_review");break;
+      case CONFIRM_DELETE: step=p_->text("delete_alarm");break;
+      default:break;
+    }
+    std::snprintf(b,sizeof(b),"%s · %s",new_?p_->text("add_alarm"):p_->text("edit_alarm"),step);
+    heading_(b,draft_.name.c_str());
+    footer_((screen_==REVIEW)?p_->text("save"):(screen_==CONFIRM_DELETE)?p_->text("delete_alarm"):p_->text("continue"));
+    if(screen_==TYPE) {
+      for(int i=0;i<3;++i) {
+        const char *mode=i==0?p_->text("mode_next"):i==1?p_->text("mode_date"):p_->text("mode_weekly");
+        chip_(rows_[i],ui::px(4),ui::px(62)+i*option_rh_(),w_-ui::px(8),option_rh_()-ui::px(5),mode,i==draft_.mode);
+        toggle_hidden(rows_[i],true);
+      }
+    } else if (screen_==TIME || screen_==DATE) {
+      const bool is_time=screen_==TIME;
+      const int count=is_time?2:3;
+      const int rw=(w_-ui::px(20))/count;
+      const int rh=std::min(ui::px(163),std::max(ui::px(90),h_-ui::px(152)));
+      const int ry=std::max(ui::px(62), (h_-rh)/2-ui::px(8));
+      for(int j=0;j<count;++j) {
+        lv_obj_t *r=is_time?(j==0?hour_:minute_):(j==0?day_:j==1?month_:year_);
+        lv_obj_set_pos(r,ui::px(8)+j*rw,ry);
+        lv_obj_set_size(r,rw-ui::px(4),rh);
+        color_roller(r);
+        toggle_hidden(r,true);
+      }
+    } else if(screen_==DAYS) {
+      for(int i=0;i<7;++i) {
+        const int col=i%4,row=i/4;
+        chip_(days_[i],col*w_/4+ui::px(3),ui::px(78)+row*option_rh_(),w_/4-ui::px(6),option_rh_()-ui::px(6),DAY_ABBR[i],(draft_.days&(1<<i))!=0);
+        toggle_hidden(days_[i],true);
+      }
+    } else if(screen_==SOUND) {
+      const int rh=std::max(ui::px(24),std::min(option_rh_(),(h_-ui::px(157))/5));
+      for(int i=0;i<5;++i) {
+        const char *tone=p_->text(i==0?"tone_classic":i==1?"tone_gentle":i==2?"tone_digital":i==3?"tone_sunrise":"tone_urgent");
+        chip_(rows_[i],ui::px(3),ui::px(58)+i*rh,w_-ui::px(6),rh-ui::px(3),tone,draft_.tone==i);
+        toggle_hidden(rows_[i],true);
+      }
+      chip_(rows_[6],ui::px(25),h_-ui::px(96),w_-ui::px(50),ui::px(40),p_->text("preview_tone"));
+      toggle_hidden(rows_[6],true);
+    } else if(screen_==OPTIONS) {
+      std::snprintf(b,sizeof(b),"%s: %s",p_->text("name"),draft_.name.c_str());
+      chip_(rows_[0],ui::px(3),ui::px(66),w_-ui::px(6),option_rh_()-ui::px(4),b);
+      std::snprintf(b,sizeof(b),"−     %s: %d%%     +",p_->text("volume"),draft_.volume);
+      chip_(rows_[1],ui::px(3),ui::px(66)+option_rh_(),w_-ui::px(6),option_rh_()-ui::px(4),b);
+      std::snprintf(b,sizeof(b),"%s: %d min",p_->text("snooze"),draft_.snooze);
+      chip_(rows_[2],ui::px(3),ui::px(66)+2*option_rh_(),w_-ui::px(6),option_rh_()-ui::px(4),b);
+      std::snprintf(b,sizeof(b),"%s: %s",p_->text("enabled"),draft_.active?p_->text("on"):p_->text("off"));
+      chip_(rows_[3],ui::px(3),ui::px(66)+3*option_rh_(),w_-ui::px(6),option_rh_()-ui::px(4),b,draft_.active);
+      for(int i=0;i<4;++i) toggle_hidden(rows_[i],true);
+    } else if(screen_==REVIEW) {
+      std::snprintf(b,sizeof(b),"%02d:%02d  ·  %s",draft_.hour,draft_.minute,draft_.name.c_str());
+      chip_(rows_[0],ui::px(2),ui::px(62),w_-ui::px(4),ui::px(43),b,true);
+      const char *mode=draft_.mode==0?p_->text("mode_next"):draft_.mode==1?p_->text("mode_date"):p_->text("mode_weekly");
+      chip_(rows_[1],ui::px(2),ui::px(109),w_-ui::px(4),ui::px(39),mode);
+      std::snprintf(b,sizeof(b),"%s: %d%%  |  %s: %d min",p_->text("volume"),draft_.volume,p_->text("snooze"),draft_.snooze);
+      chip_(rows_[2],ui::px(2),ui::px(152),w_-ui::px(4),ui::px(39),b);
+      std::snprintf(b,sizeof(b),"%s: %s",p_->text("enabled"),draft_.active?p_->text("on"):p_->text("off"));
+      chip_(rows_[3],ui::px(2),ui::px(195),w_-ui::px(4),ui::px(39),b);
+      for(int i=0;i<4;++i) toggle_hidden(rows_[i],true);
+      if(!new_) {chip_(rows_[6],ui::px(20),h_-ui::px(99),w_-ui::px(40),ui::px(39),p_->text("delete_alarm"));toggle_hidden(rows_[6],true);}
+    } else if(screen_==CONFIRM_DELETE) {
+      place_label(rows_[0],ui::px(8),h_/3,w_-ui::px(16),ui::px(70),p_->text("delete_confirm"));
+      toggle_hidden(rows_[0],true);
     }
   }
   AlarmClock *p_{};
-  int selected_{0}, w_{0}, h_{0};
-  lv_obj_t *title_{}, *rows_[7]{}, *days_[7]{}, *footer_{};
-  lv_obj_t *hour_{}, *minute_{}, *day_{}, *month_{}, *year_{};
+  Screen screen_{LIST};
+  bool new_{false};
+  int selected_{-1}, w_{0}, h_{0}, listed_{0};
+  int visible_[AlarmClock::COUNT]{};
+  lv_obj_t *title_{},*subtitle_{},*rows_[9]{},*days_[7]{},*back_{},*next_{};
+  lv_obj_t *hour_{},*minute_{},*day_{},*month_{},*year_{};
 };
 
 class AlarmPopup final : public tessera::Popup {
@@ -355,7 +506,7 @@ uint8_t AlarmClock::weekdays(int i) const {
   if (!a_[i].days) return 31;
   const std::string &v=a_[i].days->state;
   uint8_t mask=0;
-  for (int d=0;d<7;++d) if (v.find(DAYS[d])!=std::string::npos) mask |= 1u<<d;
+  for (int d=0;d<7;++d) if (v.find(DAY_ABBR[d])!=std::string::npos) mask |= 1u<<d;
   return mask;
 }
 bool AlarmClock::weekday_enabled(int i, int d) const { return d>=0 && d<7 && (weekdays(i)&(1u<<d)); }
@@ -391,8 +542,61 @@ void AlarmClock::set_weekday(int i,int d,bool on) {
   uint8_t mask=weekdays(i);
   if (on) mask|=(1u<<d); else mask&=~(1u<<d);
   std::string value;
-  for (int k=0;k<7;++k) if (mask&(1u<<k)) { if (!value.empty()) value+=','; value+=DAYS[k]; }
+  for (int k=0;k<7;++k) if (mask&(1u<<k)) { if (!value.empty()) value+=','; value+=DAY_ABBR[k]; }
   auto call=a_[i].days->make_call(); call.set_value(value); call.perform(); tessera::refresh();
+}
+const char *AlarmClock::alarm_name(int i) const {
+  if (i < 0 || i >= COUNT || !a_[i].name || a_[i].name->state.empty()) return "Wecker";
+  return a_[i].name->state.c_str();
+}
+void AlarmClock::set_alarm_name(int i, const std::string &name) {
+  if (i < 0 || i >= COUNT || !a_[i].name || name.empty()) return;
+  auto call=a_[i].name->make_call();
+  call.set_value(name.substr(0,24));
+  call.perform();
+  tessera::refresh();
+}
+bool AlarmClock::occupied(int i) const {
+  return i>=0 && i<COUNT && ((occupied_mask_ & (1u<<i)) != 0);
+}
+int AlarmClock::occupied_count() const {
+  int count=0;
+  for (int i=0;i<COUNT;++i) if (occupied(i)) ++count;
+  return count;
+}
+void AlarmClock::publish_occupied_() {
+  if (!occupied_sensor_ || last_published_mask_==occupied_mask_) return;
+  char bits[COUNT+1];
+  for (int i=0;i<COUNT;++i) bits[i]=occupied(i)?'1':'0';
+  bits[COUNT]=0;
+  occupied_sensor_->publish_state(bits);
+  last_published_mask_=occupied_mask_;
+}
+void AlarmClock::set_occupied(int i,bool yes) {
+  if (i<0 || i>=COUNT) return;
+  uint8_t next=occupied_mask_;
+  if (yes) next|=1u<<i; else next &= ~(1u<<i);
+  if(next==occupied_mask_) return;
+  occupied_mask_=next;
+  uint32_t store=occupied_mask_;
+  occupied_preference_.save(&store);
+  publish_occupied_();
+  tessera::refresh();
+}
+void AlarmClock::handle_action(const std::string &value) {
+  // Home Assistant: add:1..5 or remove:1..5. No arbitrary code or parser.
+  if (value.size()!=5 && value.size()!=8) return;
+  if (value.rfind("add:",0)==0 && value.size()==5 && value[4]>='1' && value[4]<='5')
+    set_occupied(value[4]-'1',true);
+  if (value.rfind("remove:",0)==0 && value.size()==8 && value[7]>='1' && value[7]<='5') {
+    int i=value[7]-'1'; set_active(i,false); set_occupied(i,false);
+  }
+}
+void AlarmClock::preview_tone(int tune) {
+  if (!player_ || any_ringing()) return;
+  player_->stop();
+  player_->set_gain(0.05f);
+  player_->play(SONGS[clamp_int(tune,0,4)]);
 }
 void AlarmClock::set_active(int i,bool on) {
   if (!a_[i].enabled) return;
@@ -494,6 +698,19 @@ bool AlarmClock::matches_(int i,uint32_t candidate_epoch,uint32_t &key) const {
   return true;
 }
 void AlarmClock::on_interval(uint32_t now_ms) {
+  // Preserve enabled slots and migrate configured-but-disabled slots from 0.1.0 once.
+  if(migration_pending_ && now_ms >= 12000u) {
+    for(int i=0;i<COUNT;++i) {
+      if(enabled(i) || hour(i)!=(7+i) || minute(i)!=0 || mode(i)!=0 ||
+         tune(i)!=1 || volume(i)!=60 || snooze_minutes(i)!=5 || weekdays(i)!=31)
+        set_occupied(i,true);
+    }
+    migration_pending_=false;
+    uint32_t stored=occupied_mask_;
+    occupied_preference_.save(&stored);
+  }
+  for(int i=0;i<COUNT;++i) if(enabled(i) && !occupied(i)) set_occupied(i,true);
+  publish_occupied_();
   const uint32_t epoch=tessera::epoch();
   if(epoch) {
     uint32_t minute_index=epoch/60u;
@@ -532,6 +749,11 @@ bool AlarmClock::settings(tessera::SettingsPage &page) {
   return true;
 }
 void AlarmClock::setup() {
+  occupied_preference_=global_preferences->make_preference<uint32_t>(0xAC4200u);
+  uint32_t stored=0;
+  if(occupied_preference_.load(&stored)) occupied_mask_=static_cast<uint8_t>(stored&0x1Fu);
+  else migration_pending_=true;
+  publish_occupied_();
   for(int i=0;i<COUNT;++i) {
     a_[i].preference=global_preferences->make_preference<uint32_t>(0xAC4100u+static_cast<uint32_t>(i));
     a_[i].preference.load(&a_[i].last_fired_date);

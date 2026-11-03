@@ -1,52 +1,55 @@
-# Tessera AlarmClock 0.1.0
+# Tessera AlarmClock 0.2.0
 
-Vollständiger **Release Candidate** für **Guition ESP32-S3-4848S040** / Tessera Screen Manager (ESPHome 2026.9.0). Kompatibel zum bereits funktionsfähigen Audio-Override mit `rtttl: id: guition_tone`.
+Neugestalteter lokaler Wecker für **Guition ESP32-S3-4848S040** und Tessera Screen Manager. Ausgangspunkt ist die auf dem Gerät bereits getestete Plugin-Version 0.1.0 mit funktionierendem Lautsprecher.
 
-## Funktionsumfang
-- Fünf unabhängig gespeicherte Wecker mit Uhrzeit und Aktivierung.
-- **iOS-inspirierte Uhrzeiteingabe:** zwei vertikal drehbare LVGL-Roller für Stunden (00–23) und Minuten (00–59), 3 sichtbare Zeilen, mittige Auswahl.
-- Modi: nächstes Auftreten einer Uhrzeit, einmalig mit Datum, wöchentlich mit frei wählbaren Wochentagen.
-- Fünf eigene RTTTL-Tonfolgen, je Wecker konfigurierbar.
-- Lautstärke je Wecker 10–100 % des intern sicher begrenzten Ausgangspegels. Anstieg 10→100 % des gewählten Maximalpegels innerhalb von 60 Sekunden.
-- Wecker klingelt maximal fünf Minuten je Alarmphase. Schlummern 5 oder 10 Minuten und höchstens 3 Wiederholungen je Wecker.
-- Gleichzeitige Alarme getrennt verwaltet; Audioausgabe jeweils für den zuerst laufenden Alarm, die übrigen warten nicht auf ihren Startzeitpunkt.
-- Wecker-Alarm als breites Pop-up mit **Stoppen** und **Schlummern**, aktiviert den Bildschirm.
-- Bei gültiger, bereits synchronisierter Systemzeit lokale Alarmprüfung auch ohne aktuelle HA-Steuerbefehle.
-- Verpasste Termine werden bis zu 5 Minuten nachgeholt; bereits ausgelöste Termine werden per Flash-Schlüssel pro Kalendertag vor Wiederholung nach Neustart geschützt.
-- 40 native ESPHome-Entitäten für HA: pro Wecker Uhrzeit, Datum, Schalter, Modus, Ton, Snoozedauer, Lautstärke, Wochentagtext. Zwei HA-Test-/Stopptaster.
+## Was ist neu?
 
-## Touchbedienung
-1. AlarmClock-Kachel öffnen. Fünf Wecker werden angezeigt.
-2. Weckerzeile antippen → Stunden-/Minuten-Drehrad. Die rechte Seite einer Weckerzeile schaltet nur an/aus.
-3. **Speichern** übernimmt die Uhrzeit. **Weitere Einstellungen** übernimmt die Uhrzeit und öffnet Modus, Ton, Wochentage, Lautstärke, Snooze und An/Aus.
-4. In **Weitere Einstellungen** die Zeile antippen, um Werte umzuschalten. Wöchentliche Alarme: die sieben Wochentage einzeln antippen. Modus `Einmalig am Datum`: die Datumszeile öffnet drei Drehräder (Tag/Monat/Jahr).
-5. Während eines Alarms rechts **Stoppen**; links **Schlummern** (maximal 3-mal). In HA gibt es zusätzlich **AlarmClock Alarm stoppen**.
+- **Hauptkachel bis 2 × 3**: kann auf dem 4-Zoll-Guition die komplette Seite einnehmen (Größe wird im Tessera-Layouteditor eingestellt).
+- **Weckerliste nur mit belegten Plätzen** und großer Schaltfläche „+ Wecker hinzufügen“; max. fünf Plätze.
+- **Einrichtungsassistent am Touchdisplay:** Typ → Uhrzeit per zwei LVGL-Drehrädern → gegebenenfalls Datum/Wochentage → Alarmton/Hörprobe → Name, Lautstärke und Schlummern → Prüfen und Speichern.
+- **Wecker bearbeiten/löschen**, Ein/Aus direkt in der Liste.
+- **Eigene Home-Assistant-Karte** (`ha_card/`) mit Namen, Uhrzeitauswahl, Erstellen, Bearbeiten, Aktivieren und Löschen. Ein großer „Nächster Wecker“-Bereich; kein separater Rohentitäten-Block mehr auf dem Dashboard.
+- **Namen pro Wecker**, auf dem Display aus sechs Kurzbezeichnungen, in Home Assistant frei bis 24 Zeichen.
+- Die 40 bereits existierenden ESPHome-Entitäten bleiben erhalten und sind jetzt als Konfigurationsentitäten einsortiert. Zusätzlich fünf Namen, ein Verwaltungstext und ein Belegungssensor.
+- **Lokal gespeicherte Belegung** (5-Bit-Maske im ESP32-Flash) und einmalige Erkennung bereits konfigurierter Wecker aus 0.1.0.
 
-## Home Assistant
-- Die 5 × 8 Konfigurationsentitäten werden automatisch vom ESPHome-Gerät angelegt.
-- Mitgelieferte `LOVELACE_BEISPIEL.yaml` als Vorlage für eine manuelle Dashboard-Karte verwenden (Entity-IDs nach der Installation in HA prüfen und anpassen).
-- Für den Wochentags-Text wird eine durch Kommas getrennte Liste verwendet: `Mo,Di,Mi,Do,Fr,Sa,So`; z. B. `Mo,Mi,Fr`. Leerer Text bedeutet keine aktiven Tage.
-- Modus `Next` = nächstes Auftreten der gespeicherten Uhrzeit. `Date` = einmalig am Datum. `Weekly` = wöchentlich an ausgewählten Tagen.
-- ESP32 ist führend; HA schreibt über die nativen ESPHome-Entitäten. Nach Wiederverbindung meldet ESPHome deren lokalen Zustand.
+Die bislang funktionierende Alarm-Engine bleibt erhalten: wiederkehrende und einmalige Zeiten, fünf Original-RTTTL-Melodien, lokale Auslösung, 60-Sekunden-Lautstärkeanstieg, maximal fünf Minuten Alarmdauer, drei Schlummer-Wiederholungen à 5/10 Minuten. Der ESP32 bleibt führend.
 
-## Voraussetzungen und Installation
-1. **Vor einem Update alle aktiven Wecker deaktivieren und die alten Zeiten notieren.** Beim Umstieg aus v0.0.5 ändern sich interne Entitäts-IDs; automatische Datenmigration ist nicht enthalten.
-2. In `Hilde` muss bereits die funktionierende `guition_tone`-RTTTL-Audio-Konfiguration bestehen. Kein zweites `i2s_audio`/`speaker`/`rtttl` im Plugin anlegen.
-3. Sämtliche Dateien aus dem ZIP **direkt** in das Root des GitHub-Repositories `https://github.com/Karlstahl1982/tessera-alarmclock` hochladen, vorhandene Dateien ersetzen und Commit auf `main`.
-4. Tessera → Plugins → Mit Link hinzufügen → Branch testen → Repository / `main` → Plugin lesen; dann für Hilde aktualisieren.
-5. Firmware **zuerst kompilieren**; bei Fehler nicht flashen, sondern den vollständigen Buildlog sichern. Erst nach einem sauberen Build auf das Display übertragen.
-6. In HA fünf Uhrzeiten prüfen und zunächst einen Testalarm auslösen. Danach mit einem einmaligen Alarm ein paar Minuten in der Zukunft testen.
-7. Nur nach erfolgreichem Praxis-Test als regulären Wecker verwenden; für kritische Termine einen zweiten unabhängigen Wecker nutzen.
+## Installation – GitHub/Tessera
 
-## Technische Grenzen / offene Prüfungen
-- **Nicht auf der realen Tessera-Firmware kompiliert oder auf Hilde geflasht.** C++ wurde lediglich mit einem Mock-API-Header auf Syntax geprüft, JSON/YAML/Python wurden syntaktisch validiert. Die echte LVGL-/ESPHome-Kompilierung und die Touchreaktion sind noch zu prüfen.
-- Tessera setzt die Uhrzeit ursprünglich über HA. Ohne gültige Uhrzeit nach Neustart kann das Gerät ohne RTC nicht verlässlich wecken; bei laufender Uhr nach einer WLAN-Unterbrechung wird lokal weitergeprüft.
-- Tessera kann die normale Bedienung bei langem Verbindungsverlust sperren. Alarm-Pop-up und Offline-Touchsteuerung sind deshalb **noch nicht als ausfallsicher bestätigt**.
-- Das Pop-up ist **breit**, kein vollständiges randloses Fullscreen-Overlay. Das entspricht der Plugin-API.
-- Die gewünschte per-Alarm-Helligkeit 10–100 % ist derzeit **nicht implementiert**, da die Plugin-API keine sichere per-Plugin-Rückstellung der Panelhelligkeit dokumentiert. Das Gerät wird geweckt, vorhandene Helligkeit beibehalten.
-- Audio-Gain ist sicherheitshalber auf 15 % des RTTTL-Gains begrenzt (100 % AlarmClock = 15 % Digitalgain). Bei Knarzen in HA reduzieren.
-- Eine Flash-Speicherung von Änderungen an ESPHome-Entitäten ist vorhanden, aber häufiges Umstellen kann Flash verschleißen; keine Sekundentakt-Aktualisierung.
-- Sommerzeitumstellungen: interne nächste-Alarm-Prognose nutzt vereinfachte 24-Stunden-Tag-Abstände; die tatsächliche Auslösung prüft lokale Zeit/Datum und ist die maßgebliche Regel.
+1. **Sicherheit:** Vor Aktualisierung vorhandene Weckzeiten dokumentieren. Bestehende Wecker während des Updates deaktivieren; für wichtige Termine einen zweiten Wecker verwenden.
+2. Das ZIP entpacken. Dateien aus dem **ZIP-Hauptverzeichnis** direkt in den Root des GitHub-Repositories `https://github.com/Karlstahl1982/tessera-alarmclock` hochladen. Vorhandene Dateien ersetzen, auf `main` committen. Keine zusätzliche Ordnerstufe anlegen.
+3. Tessera → Plugins → AlarmClock bzw. „Mit einem Link hinzufügen“ → **Branch testen** → `main` neu lesen.
+4. Neues GitHub-Commit kontrollieren. **Erst Firmware erstellen/kompilieren.** Bei Fehlern den Log sichern und nicht flashen.
+5. Nach erfolgreichem Build auf **Hilde** installieren. Lautsprecher-YAML (RTTTL-ID `guition_tone`) bleibt unverändert.
+6. In Tessera → Display „Hilde“ → Layout die AlarmClock-Kachel auf **2 × 3 / ganze Seite** vergrößern → „Speichern & senden“. Diese Layoutänderung erfordert keinen erneuten Firmware-Build.
+7. Im Touchdisplay erst einen neuen Wecker anlegen, Tonprobe durchführen und einen einmaligen Alarm in 2–3 Minuten auslösen.
+
+### Home Assistant-Karte
+
+Die optionale Bedienkarte ist in [`ha_card/README.md`](ha_card/README.md) beschrieben. Einbau unter `/config/www` und Registrierung als JavaScript-Modul-Ressource. Zusätzlich die Beispieldatei `ha_card/LOVELACE_KARTE.yaml` verwenden. Die bisherige Rohdatenansicht kann danach vom Dashboard entfernt werden; die ESPHome-Geräteentitäten bleiben technisch bestehen.
+
+## Wesentliche technische Hinweise
+
+- **Kein eigenes RTC-Modul:** Nach einem kompletten Neustart ohne WLAN/NTP gibt es keine verlässlich gültige Uhrzeit. Ein bereits synchronisiertes, laufendes Gerät prüft Wecker lokal auch bei HA-/WLAN-Unterbrechung.
+- Tessera kann seine reguläre Touchoberfläche bei längerem HA-Verbindungsverlust sperren. Die **vollständige Offline-Touchbedienbarkeit ist nicht durch einen Geräteversuch belegt**.
+- Audio-Ausgänge und NS4168-Verstärker des Guition müssen weiterhin hardwareseitig auf Lautsprecherbetrieb geschaltet sein. Kein zweites RTTTL-Audiomodul definieren.
+- Die bisherige Alarmansicht nutzt ein **breites Popup**, kein garantiertes echtes randloses Vollbild.
+- Eine gesonderte Alarmhelligkeitsregelung (10–100 %) ist noch nicht implementiert.
+- Die Wiedergabe-Lautstärke ist wie bisher per RTTTL-Gain softwareseitig auf 15 % begrenzt; bei Knarzen reduzieren.
+- **Kein nachgewiesener vollständiger ESPHome-2026.9.0-Firmware-Build in dieser Umgebung**. Parser-/Struktur-/Browser-Syntax-Tests im Paket ersetzen das Testen auf dem Gerät nicht.
+- Der HTML/JS-Teil ist ein zusätzliches Home-Assistant-Dashboard-Modul; aus dem Tessera-Plugin allein wird keine Lovelace-Karte automatisch installiert.
 
 ## Rückbau
-Alte Version 0.0.5 über GitHub-Commit oder ZIP zurückspielen, in Tessera erneut Branch laden und Firmware neu erstellen. Vorher alle Wecker deaktivieren. Der Lautsprecher-Override bleibt unverändert.
+
+Auf den vorherigen GitHub-Commit mit Version 0.1.0 zurückgehen, Tessera-Plugin neu laden und Firmware bauen. Die zusätzliche Lovelace-Ressource kann separat entfernt werden; bestehender Audio-Override wird nicht verändert.
+
+## Verzeichnis
+
+- `plugin.yaml`: ESPHome-Entitäten und Binding
+- `tessera-plugin.yaml`: Tessera-Metadaten/Kachelgröße
+- `components/alarmclock/`: Python-Codegen und C++-UI/Alarmsteuerung
+- `translations/`: Anzeigeübersetzungen
+- `ha_card/`: optionale Home-Assistant-Oberfläche
+- `tests/`: statische Paketvalidierung und Browserlogiktests
+- `ZUSAMMENFASSUNG.md`: Fortschritt, Schwierigkeiten, Installation

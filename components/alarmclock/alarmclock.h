@@ -8,6 +8,8 @@
 #include "esphome/components/select/select.h"
 #include "esphome/components/text/text.h"
 #include "esphome/components/number/number.h"
+#include "esphome/components/text_sensor/text_sensor.h"
+#include <string>
 #include "esphome/components/rtttl/rtttl.h"
 #include "esphome/components/smart_display/plugin_api.h"
 
@@ -30,6 +32,8 @@ class AlarmClock final : public Component, public tessera::Plugin {
   void set_snooze(int i, select::Select *p) { a_[i].snooze = p; }
   void set_volume(int i, number::Number *p) { a_[i].volume = p; }
   void set_days(int i, text::Text *p) { a_[i].days = p; }
+  void set_name(int i, text::Text *p) { a_[i].name = p; }
+  void set_occupied_sensor(text_sensor::TextSensor *p) { occupied_sensor_ = p; }
 
   int hour(int i) const;
   int minute(int i) const;
@@ -51,6 +55,13 @@ class AlarmClock final : public Component, public tessera::Plugin {
   void set_snooze_minutes(int i, int minutes);
   void set_weekday(int i, int mon_based, bool on);
   void set_active(int i, bool on);
+  void set_alarm_name(int i, const std::string &name);
+  const char *alarm_name(int i) const;
+  bool occupied(int i) const;
+  int occupied_count() const;
+  void set_occupied(int i, bool yes);
+  void handle_action(const std::string &value);
+  void preview_tone(int tune);
   void start_test();
   void stop_all();
   void stop_alarm(int i);
@@ -74,6 +85,7 @@ class AlarmClock final : public Component, public tessera::Plugin {
     select::Select *snooze{nullptr};
     number::Number *volume{nullptr};
     text::Text *days{nullptr};
+    text::Text *name{nullptr};
     uint32_t last_fired_date{0};
     ESPPreferenceObject preference{};
     uint32_t started_ms{0};
@@ -84,10 +96,16 @@ class AlarmClock final : public Component, public tessera::Plugin {
     bool test{false};
   } a_[COUNT];
   void start_alarm_(int i, bool test);
+  void publish_occupied_();
   void play_current_(uint32_t now_ms);
   void refresh_audio_owner_(uint32_t now_ms);
   bool matches_(int i, uint32_t candidate_epoch, uint32_t &date_key) const;
   rtttl::Rtttl *player_{nullptr};
+  text_sensor::TextSensor *occupied_sensor_{nullptr};
+  ESPPreferenceObject occupied_preference_{};
+  uint8_t occupied_mask_{0};
+  uint8_t last_published_mask_{255};
+  bool migration_pending_{false};
   uint32_t seen_minute_{0};
   uint32_t last_song_ms_{0};
   int audio_owner_{-1};

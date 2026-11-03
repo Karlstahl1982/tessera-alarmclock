@@ -4,8 +4,8 @@
   },
   "screen": {
     "tile_title": "Next alarm",
-    "list_title": "Five alarms",
-    "list_hint": "Tap: edit | right: on/off",
+    "list_title": "My alarms",
+    "list_hint": "Maximum five alarms · Saved locally",
     "ringing": "ALARM!",
     "clock_missing": "Waiting for valid time",
     "alarm": "Alarm",
@@ -31,13 +31,33 @@
     "tone_gentle": "Gentle",
     "tone_digital": "Digital",
     "tone_sunrise": "Sunrise",
-    "tone_urgent": "Urgent"
+    "tone_urgent": "Urgent",
+    "hero_title": "Alarm clock",
+    "hero_footer": "Tap to manage",
+    "ringing_hint": "Alarm ringing",
+    "no_alarms": "No alarm yet",
+    "list_subtitle": "Tap: edit | right: on/off",
+    "add_alarm": "+ Add alarm",
+    "empty_list": "Tap + Add alarm",
+    "edit_alarm": "Edit alarm",
+    "step_type": "1 · Type",
+    "step_time": "2 · Time",
+    "step_date": "3 · Date",
+    "step_days": "3 · Days",
+    "step_sound": "4 · Tone",
+    "step_options": "5 · Options",
+    "step_review": "6 · Review",
+    "continue": "Next",
+    "preview_tone": "▶ Play preview",
+    "name": "Name",
+    "delete_alarm": "Delete alarm",
+    "delete_confirm": "Delete this alarm?"
   },
   "app": {
     "name": "AlarmClock",
-    "summary": "Five autonomous alarms with time wheels, Home Assistant controls and local alerts.",
+    "summary": "Autonomous alarm clock with guided setup and Home Assistant.",
     "tile_name": "Next alarm",
     "tile_example": "07:00",
-    "card_name": "Five alarms"
+    "card_name": "My alarms"
   }
 }

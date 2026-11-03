@@ -1,26 +1,26 @@
 id: alarmclock
-version: 0.1.0
+version: 0.2.0
 api: '0.18'
 icon: alarm
 maintainer: Karlstahl1982
 license: MIT
 stage: beta
 topics:
-  - time
+- time
 requires:
   esphome: 2026.9.0
 boards: any
 flash_kb: 60
 tiles:
-  - id: next_alarm
-    name: tile_name
-    icon: alarm
-    sizes:
-      min: 1x1
-      max: 2x2
-    memory: 720
-    example: tile_example
+- id: next_alarm
+  name: tile_name
+  icon: alarm
+  sizes:
+    min: 1x1
+    max: 2x3
+  memory: 1250
+  example: tile_example
 cards:
-  - id: overview
-    name: card_name
-    wide: true
+- id: overview
+  name: card_name
+  wide: true

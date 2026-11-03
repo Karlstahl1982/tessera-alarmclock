@@ -1,7 +1,7 @@
 """Tessera AlarmClock: five autonomous alarms with ESPHome entities."""
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import datetime, number, rtttl, select, smart_display, switch, text
+from esphome.components import datetime, number, rtttl, select, smart_display, switch, text, text_sensor
 from esphome.const import CONF_ID
 
 DEPENDENCIES = ["smart_display"]
@@ -17,8 +17,10 @@ FIELDS = {
     "snooze": select.Select,
     "volume": number.Number,
     "days": text.Text,
+    "name": text.Text,
 }
 _schema = {cv.GenerateID(): cv.declare_id(AlarmClock), cv.Required(CONF_TONE): cv.use_id(rtttl.Rtttl)}
+_schema[cv.Required("occupied_sensor")] = cv.use_id(text_sensor.TextSensor)
 for index in range(1, 6):
     for field, typ in FIELDS.items():
         _schema[cv.Required(f"{field}_{index}")] = cv.use_id(typ)
@@ -29,6 +31,7 @@ async def to_code(config):
     await cg.register_component(var, config)
     await smart_display.register_plugin(var, __file__)
     cg.add(var.set_tone_player(await cg.get_variable(config[CONF_TONE])))
+    cg.add(var.set_occupied_sensor(await cg.get_variable(config["occupied_sensor"])))
     for i in range(1, 6):
         for field in FIELDS:
             cg.add(getattr(var, f"set_{field}")(i - 1, await cg.get_variable(config[f"{field}_{i}"])))

@@ -1,14 +1,16 @@
-# CHANGELOG
+# Changelog
+
+## 0.2.0 – 2026-11-03
+
+- Hauptkachel bis 2×3, mit großem nächsten Weckzeitpunkt und Bedienhinweis.
+- Neue reduzierte Touch-Übersicht (nur angelegte Wecker) mit Ein/Aus und „Neuer Wecker“.
+- Sequentieller Touch-Assistent mit iOS-artigen Stunden-/Minuten-Rollern, Wiederholung, Datum/Wochentagen, Melodie, Lautstärke, Schlummern und Abschlusskontrolle.
+- Belegte Plätze lokal im Flash vermerkt; Migration konfigurierter Plätze aus 0.1.0 nach Möglichkeit.
+- Namen je Wecker; Touch-Vorlagen und freie Eingabe über Home Assistant.
+- Native ESPHome-Entitäten als `config` kategorisiert.
+- Neue optionale Home-Assistant-Dashboard-Karte mit kompakter Liste und vierstufigem Einrichtungsassistenten.
+- Bestehende lokale Audio-/Alarmsteuerung unverändert weitergenutzt.
 
 ## 0.1.0 – 2026-11-03
-- Vollständige fünf-Wecker-Architektur statt eines Testweckers.
-- Native LVGL-Roller für Uhrzeit und Datum.
-- Modi Next/Date/Weekly, Wochentage pro Wecker.
-- Fünf RTTTL-Melodien, Lautstärke-Steigerung innerhalb 60 Sekunden.
-- Schlummern (5/10 Minuten, maximal 3-mal), 5-Minuten-Alarmbegrenzung und Stopptaster.
-- Wide-Popup, lokale Zeitprüfung, 5-Minuten-Nachholen, Schutz vor Wiederholung am selben Tag.
-- HA-Entitäten und Dashboard-Vorlage.
-- Kritische Einschränkungen und Prüfstatus explizit dokumentiert.
 
-## 0.0.5
-- Ein Wecker, native HA-Uhrzeit, manuelle +/- Bedienung.
+- Fünf Wecker, Alarmton, Wiederholung und native Home-Assistant-Entitäten.
