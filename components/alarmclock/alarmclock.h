@@ -129,7 +129,6 @@ class AlarmClock final : public Component, public tessera::Plugin {
   uint32_t last_song_ms_{0};
   uint32_t last_audio_attempt_ms_{0};
   int applied_volume_percent_{-1};
-  uint32_t last_volume_update_ms_{0};
   bool volume_update_sent_{false};
   uint8_t audio_start_retries_{0};
   bool audio_stream_was_running_{false};

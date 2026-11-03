@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.3.4')
+        self.assertEqual(self.manifest['version'],'0.3.6')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -72,7 +72,7 @@ class PackageTest(unittest.TestCase):
         for token in ('const bool already_ringing=any_ringing();',
                       'play_current_(now_ms); // Start audio promptly',
                       'speaker_->set_volume(gain);',
-                      'VolumeRamp::current_percent(', 'VolumeRamp::seconds_remaining(',
+                      'VolumeRamp::current_percent(', 'VolumeRamp::seconds_to_next(',
                       'last_audio_attempt_ms_', 'audio_start_retries_<2',
                       'overlay_countdown_', 'overlay_progress_fill_'):
             self.assertIn(token,c)
@@ -103,13 +103,33 @@ class PackageTest(unittest.TestCase):
                     self.assertTrue(entry.get('internal'),entry)
         self.assertTrue(any(b.get('name')=='AlarmClock Testalarm' and b.get('internal') for b in p['button']))
 
-    def test_progress_bar_layout_and_smooth_gain(self):
+    def test_snooze_cancel_tile_and_compact_actions(self):
+        c=self.cpp
+        self.assertIn('const bool cancel_tile=(n==5 && snooze_slot>=0);',c)
+        self.assertIn('p_->stop_alarm(snooze_slot); // cancel ringing lifecycle and pending snooze',c)
+        self.assertIn('p_->text("cancel_snooze")',c)
+        self.assertIn('cancel_snooze?"X":"+"',c)
+        self.assertIn('void paint_trash_()',c)
+        self.assertIn('lv_obj_t *trash_bg_',c)
+        self.assertIn('paint_pencil_()',c)
+        self.assertNotIn('"%d / 5  |  %s"',c)
+        self.assertNotIn('p_->text("delete_alarm"));\n      toggle_hidden(rows_[6]',c)
+        for l in ('de','en'):
+            self.assertIn('cancel_snooze',json.loads((ROOT/f'translations/{l}.json').read_text())['screen'])
+
+    def test_progress_bar_layout_and_stepped_gain(self):
         self.assertIn('overlay_progress_fill_=lv_obj_create(alarm_overlay_)',self.cpp)
         self.assertIn('lv_obj_set_pos(overlay_progress_fill_,progress_x,progress_y)',self.cpp)
         self.assertIn('lv_obj_set_style_pad_all(overlay_progress_fill_,0,0)',self.cpp)
-        self.assertIn('VolumeRamp::UPDATE_INTERVAL_MS',self.cpp)
-        self.assertIn('VolumeRamp::seconds_remaining(elapsed_ms)',self.cpp)
-        self.assertNotIn('VolumeRamp::STEP_MS', (ROOT/'components/alarmclock/volume_ramp.h').read_text())
+        self.assertIn('applied_volume_percent_ != current_pct',self.cpp)
+        self.assertIn('VolumeRamp::progress_percent(target_percent,elapsed_ms)',self.cpp)
+        self.assertIn('VolumeRamp::seconds_to_next(target_percent,elapsed_ms)',self.cpp)
+        ramp=(ROOT/'components/alarmclock/volume_ramp.h').read_text()
+        self.assertIn('STEP_MS = 15000u',ramp)
+        self.assertIn('START_PERCENT = 5',ramp)
+        self.assertIn('STEP_PERCENT = 5',ramp)
+        self.assertIn('volume_step_in', self.cpp)
+        self.assertNotIn('gain_factor',ramp)
 
     def test_audio_ramp_runtime(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
@@ -124,7 +144,7 @@ class PackageTest(unittest.TestCase):
 
     def test_audio_mock_runtime(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
-        for name in ('test_audio_runtime','test_cold_start','test_first_scheduled_alarm','test_millis_rollover','test_snooze_suppression'):
+        for name in ('test_audio_runtime','test_cold_start','test_first_scheduled_alarm','test_millis_rollover','test_snooze_suppression','test_cancel_snooze'):
             source=ROOT/f'tests/{name}.cpp'
             executable=ROOT/f'tests/_{name}'
             try:

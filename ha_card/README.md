@@ -1,15 +1,12 @@
-# Home Assistant – AlarmClock v0.3.4
+# Home Assistant – zentrale AlarmClock-Karte
 
-Diese Karte zeigt **ausschließlich zentrale Funktionen**: nächster Alarm / Alarmstatus, alle Wecker unterdrücken und laufenden Alarm stoppen. Kein Bearbeiten einzelner Wecker in Home Assistant. Die Konfiguration bleibt am Tessera-Display.
+Die JavaScript-Karte ist gegenüber v0.3.5 **unverändert**. Für das reine Plugin-Update auf **v0.3.6** ist **keine** neue HA-Ressourceninstallation oder Cache-Aktualisierung erforderlich.
 
-1. `tessera-alarmclock-card.js` nach `/homeassistant/www/tessera-alarmclock-card.js` kopieren (überschreiben).
-2. In Home Assistant unter **Einstellungen → Dashboards → Ressourcen** das JavaScript-Modul auf `/local/tessera-alarmclock-card.js?v=0.3.4` ändern.
-3. Browser mit `Strg+F5` neu laden.
-4. Bestehende Lovelace-Karte kann bleiben: `type: custom:tessera-alarmclock-card`.
-5. **Erst Firmware v0.3.4 installieren**, da diese die neuen zentralen Entitäten bereitstellt.
+Falls die Karte noch nicht installiert ist:
 
-### Bedeutung von »Wecker unterdrücken«
+1. `ha_card/tessera-alarmclock-card.js` nach `/homeassistant/www/tessera-alarmclock-card.js` kopieren.
+2. Unter **Einstellungen → Dashboards → Ressourcen** die URL `/local/tessera-alarmclock-card.js?v=0.3.4` als JavaScript-Modul eintragen (diese Kartenfassung ist kompatibel).
+3. In der Dashboard-Verwaltung eine manuelle Karte mit `type: custom:tessera-alarmclock-card` anlegen.
+4. Benötigt eine Firmware ab **v0.3.4** mit den drei zentralen Entitäten (Nächster Wecker, Wecker unterdrücken, Alarm stoppen).
 
-Solange der Schalter aktiv ist, werden neu fällige Alarme übersprungen, einschließlich einmaliger Alarme. Bereits klingelnde oder schlummernde Alarme werden beim Einschalten beendet. Beim Ausschalten wird **kein** zuvor unterdrückter Alarm nachgeholt. Der Schalter startet nach einem Neustart sicherheitshalber **AUS**.
-
-Alte Home-Assistant-Einzelentitäten können nach einem Firmware-Update als **nicht verfügbar** in der Entitätenregistrierung verbleiben. Sie werden von ESPHome nicht mehr veröffentlicht. Alte manuell angelegte Kacheln oder Automationen, die diese Entitäten verwenden, müssen entfernt bzw. angepasst werden. Die Registrierung in Home Assistant wird nicht automatisch gelöscht.
+Die einzelnen Wecker werden **nur am Display** konfiguriert; in HA gibt es keine Einzel-Wecker-Steuerung.

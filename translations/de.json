@@ -33,7 +33,7 @@
     "tone_sunrise": "Sonnenaufgang",
     "tone_urgent": "Dringend",
     "hero_title": "Wecker",
-    "hero_footer": "Öffnen & verwalten",
+    "hero_footer": "Bearbeiten",
     "ringing_hint": "Alarm aktiv",
     "no_alarms": "Noch kein Wecker",
     "list_subtitle": "Antippen: bearbeiten  |  rechts: AN/AUS",
@@ -80,7 +80,9 @@
     "audio_failed": "Audio startet nicht!",
     "snoozing": "Schlummert",
     "suppressed": "Wecker unterdrückt",
-    "volume_target_in": "Zielpegel in"
+    "volume_target_in": "Zielpegel in",
+    "cancel_snooze": "Schlummern beenden",
+    "volume_step_in": "Nächste Erhöhung in"
   },
   "app": {
     "name": "AlarmClock",

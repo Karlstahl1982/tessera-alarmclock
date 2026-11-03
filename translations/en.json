@@ -33,7 +33,7 @@
     "tone_sunrise": "Sunrise",
     "tone_urgent": "Urgent",
     "hero_title": "Alarm clock",
-    "hero_footer": "Tap to manage",
+    "hero_footer": "Edit",
     "ringing_hint": "Alarm ringing",
     "no_alarms": "No alarm yet",
     "list_subtitle": "Tap: edit | right: on/off",
@@ -80,7 +80,9 @@
     "audio_failed": "Audio failed to start!",
     "snoozing": "Snoozing",
     "suppressed": "Alarms suppressed",
-    "volume_target_in": "Target volume in"
+    "volume_target_in": "Target volume in",
+    "cancel_snooze": "Cancel snooze",
+    "volume_step_in": "Next volume increase in"
   },
   "app": {
     "name": "AlarmClock",

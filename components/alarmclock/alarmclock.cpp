@@ -75,7 +75,17 @@ class NextAlarmTile final : public tessera::Tile {
     heading_ = ui::label(c.parent, Font::TITLE, theme::INK);
     clock_ = ui::label(c.parent, Font::VALUE, theme::INK);
     detail_ = ui::label(c.parent, Font::BODY_LARGE, theme::MUTED);
-    footer_ = ui::label(c.parent, Font::BODY, theme::MUTED);
+    // A small pencil pictogram signals that tapping the tile opens editing.
+    // Use rectangles only: no font-specific symbols or optional LVGL widgets.
+    pencil_circle_ = lv_obj_create(c.parent);
+    for (auto &piece : pencil_parts_) piece = lv_obj_create(c.parent);
+    for (auto *obj : {pencil_circle_, pencil_parts_[0], pencil_parts_[1],
+                      pencil_parts_[2], pencil_parts_[3], pencil_parts_[4]}) {
+      lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+      lv_obj_set_style_pad_all(obj, 0, 0);
+      lv_obj_set_style_border_width(obj, 0, 0);
+    }
     on_tick(0);
   }
   void on_tick(uint32_t) override {
@@ -106,21 +116,43 @@ class NextAlarmTile final : public tessera::Tile {
     }
     const int bottom_y = std::max(ui::px(60), h_ - ui::px(64));
     place_label(detail_, 0, bottom_y, w_, ui::line_height(Font::BODY_LARGE), value);
-    char footer[68];
-    std::snprintf(footer, sizeof(footer), "%d / 5  |  %s", p_->occupied_count(), p_->text("hero_footer"));
-    place_label(footer_, 0, h_ - ui::px(27), w_, ui::px(25), footer);
+    // Compact edit pencil, bottom-right instead of the redundant "5/5" line.
+    paint_pencil_();
   }
   void on_theme() override {
     ui::set_color(heading_, theme::INK);
     ui::set_color(clock_, theme::INK);
     ui::set_color(detail_, theme::MUTED);
-    ui::set_color(footer_, theme::MUTED);
+    paint_pencil_();
   }
   void on_tap() override { tessera::open_card(p_->plugin_id(), "overview", "", tile_); }
  private:
+  void paint_pencil_() {
+    if (!pencil_circle_) return;
+    const int d = ui::px(40);
+    const int x = w_ - d - ui::px(8);
+    const int y = h_ - d - ui::px(7);
+    lv_obj_set_pos(pencil_circle_, x, y);
+    lv_obj_set_size(pencil_circle_, d, d);
+    lv_obj_set_style_radius(pencil_circle_, ui::px(12), 0);
+    lv_obj_set_style_bg_opa(pencil_circle_, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(pencil_circle_, ui::color(theme::ACCENT), 0);
+    // Stair-step pencil glyph (pen body, point and eraser); robust with all fonts.
+    const int shape[5][4] = {{9,27,5,5},{14,22,7,7},{21,15,7,7},
+                             {28,11,4,5},{9,32,5,2}};
+    for (int i=0;i<5;++i) {
+      auto *o=pencil_parts_[i];
+      lv_obj_set_pos(o,x+ui::px(shape[i][0]),y+ui::px(shape[i][1]));
+      lv_obj_set_size(o,ui::px(shape[i][2]),ui::px(shape[i][3]));
+      lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+      lv_obj_set_style_bg_color(o,ui::color(theme::ON_ACCENT),0);
+      lv_obj_set_style_radius(o,ui::px(1),0);
+    }
+  }
   AlarmClock *p_{};
   int tile_{-1}, w_{0}, h_{0};
-  lv_obj_t *heading_{}, *clock_{}, *detail_{}, *footer_{};
+  lv_obj_t *heading_{}, *clock_{}, *detail_{};
+  lv_obj_t *pencil_circle_{}, *pencil_parts_[5]{};
 };
 
 class AlarmOverview final : public tessera::Card {
@@ -135,6 +167,14 @@ class AlarmOverview final : public tessera::Card {
     for (auto &r : days_) r = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
     back_ = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
     next_ = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
+    trash_bg_ = lv_obj_create(c.parent);
+    for(auto &piece : trash_parts_) piece = lv_obj_create(c.parent);
+    for(auto *obj : {trash_bg_, trash_parts_[0], trash_parts_[1], trash_parts_[2], trash_parts_[3]}) {
+      lv_obj_remove_flag(obj,LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_remove_flag(obj,LV_OBJ_FLAG_SCROLLABLE);
+      lv_obj_set_style_pad_all(obj,0,0);
+      lv_obj_set_style_border_width(obj,0,0);
+    }
     hour_ = lv_roller_create(c.parent);
     minute_ = lv_roller_create(c.parent);
     day_ = lv_roller_create(c.parent);
@@ -183,7 +223,13 @@ class AlarmOverview final : public tessera::Card {
           const int card_y=top+row*(card_h+gap);
           if (x>=card_x && x<card_x+card_w && y>=card_y && y<card_y+card_h) {
             const int index=row*2+col;
-            if (index<listed_) {
+            // The sixth tile becomes an explicit snooze-cancel action.
+            // This is deliberately per-slot: other alarms keep running.
+            const int next = p_->next_alarm();
+            const int snooze_slot = (next>=0 && p_->snoozing(next)) ? next : -1;
+            if (index==5 && snooze_slot>=0) {
+              p_->stop_alarm(snooze_slot); // cancel ringing lifecycle and pending snooze
+            } else if (index<listed_) {
               const int slot=visible_[index];
               // Top-right status pill is an explicit quick toggle.
               if (x>=card_x+card_w-ui::px(52) && y<card_y+ui::px(42)) {
@@ -221,7 +267,9 @@ class AlarmOverview final : public tessera::Card {
               }
             }
           }
-        } else if (y>=h_-ui::px(96) && y<btn_y) screen_=CONFIRM_DELETE;
+        } else if (y>=h_-ui::px(96) && y<btn_y && x>=w_-ui::px(67)) {
+          screen_=CONFIRM_DELETE; // trash icon only, not the whole row
+        }
       } else if (screen_ == TYPE) {
         const int top=detail_top_(), gap=ui::px(9), row_h=type_card_height_();
         if (y>=top) {
@@ -263,7 +311,7 @@ class AlarmOverview final : public tessera::Card {
             case 3: draft_.active=!draft_.active; break;
           }
         }
-      } else if (screen_==REVIEW && !new_ && y>=h_-ui::px(101) && y<h_-ui::px(52)) {
+      } else if (screen_==REVIEW && !new_ && y>=h_-ui::px(101) && y<h_-ui::px(52) && x>=w_-ui::px(67)) {
         screen_=CONFIRM_DELETE;
       }
     }
@@ -479,9 +527,14 @@ class AlarmOverview final : public tessera::Card {
       lv_obj_set_style_radius(line,ui::px(1),0);
     }
     if(add) {
-      // One strong central plus with a short caption below. No overlapping icon.
+      // Plus tile; when icon_mode==4, use a distinct cancellation tile.
+      const bool cancel_snooze=icon_mode==4;
+      if(cancel_snooze) {
+        lv_obj_set_style_border_color(c.surface,lv_color_hex(0xC05264),0);
+        lv_obj_set_style_bg_color(c.disc,lv_color_hex(0xC05264),0);
+      }
       toggle_hidden(c.disc,false);toggle_hidden(c.hand_a,false);toggle_hidden(c.hand_b,false);
-      place_label(c.value,x+ui::px(6),y+h/2-ui::px(31),w-ui::px(12),ui::px(58),"+");
+      place_label(c.value,x+ui::px(6),y+h/2-ui::px(31),w-ui::px(12),ui::px(58),cancel_snooze?"X":"+");
       lv_obj_set_style_text_font(c.value,ui::font(Font::VALUE),0);
       place_label(c.title,x+ui::px(5),y+h-ui::px(32),w-ui::px(10),ui::px(24),title);
       lv_obj_set_style_text_font(c.title,ui::font(Font::BODY),0);
@@ -544,6 +597,7 @@ class AlarmOverview final : public tessera::Card {
     for(auto &c:edit_cards_) show_visual_(c,false);
     toggle_hidden(title_,true); toggle_hidden(subtitle_,true);
     toggle_hidden(back_,false);toggle_hidden(next_,false);
+    toggle_hidden(trash_bg_,false);for(auto *p:trash_parts_)toggle_hidden(p,false);
   }
   void chip_(lv_obj_t *label,int x,int y,int width,int height,const char *value,bool selected=false) {
     place_label(label,x,y,width,height,value);
@@ -552,6 +606,26 @@ class AlarmOverview final : public tessera::Card {
     lv_obj_set_style_radius(label,ui::px(10),0);
     lv_obj_set_style_pad_hor(label,ui::px(4),0);
     lv_obj_set_style_text_color(label,ui::color(selected?theme::ON_ACCENT:theme::INK),0);
+  }
+  void paint_trash_() {
+    if(!trash_bg_) return;
+    const int x=w_-ui::px(65), y=h_-ui::px(96);
+    lv_obj_set_pos(trash_bg_,x,y);lv_obj_set_size(trash_bg_,ui::px(53),ui::px(41));
+    lv_obj_set_style_radius(trash_bg_,ui::px(10),0);
+    lv_obj_set_style_bg_opa(trash_bg_,LV_OPA_COVER,0);
+    lv_obj_set_style_bg_color(trash_bg_,lv_color_hex(0xA94558),0);
+    // Bin icon: top handle, lid, body and a central gap line.
+    const int pieces[4][4]={{22,8,9,3},{15,13,23,3},{18,18,17,16},{26,20,2,11}};
+    for(int i=0;i<4;++i) {
+      auto *o=trash_parts_[i];
+      lv_obj_set_pos(o,x+ui::px(pieces[i][0]),y+ui::px(pieces[i][1]));
+      lv_obj_set_size(o,ui::px(pieces[i][2]),ui::px(pieces[i][3]));
+      lv_obj_set_style_radius(o,ui::px(i==2?2:1),0);
+      lv_obj_set_style_bg_opa(o,LV_OPA_COVER,0);
+      lv_obj_set_style_bg_color(o,i==3?lv_color_hex(0xA94558):ui::color(theme::ON_ACCENT),0);
+    }
+    toggle_hidden(trash_bg_,true);
+    for(auto *o:trash_parts_)toggle_hidden(o,true);
   }
   void footer_(const char *next) {
     chip_(back_,ui::px(4),h_-ui::px(47),w_/2-ui::px(7),ui::px(43),p_->text("back"));
@@ -571,20 +645,22 @@ class AlarmOverview final : public tessera::Card {
       listed_=0;
       for(int i=0;i<AlarmClock::COUNT;++i)
         if(p_->occupied(i)) visible_[listed_++]=i;
-      char count[16];
-      std::snprintf(count,sizeof(count),"%d / 5",listed_);
-      chip_(rows_[8],w_-ui::px(76),ui::px(3),ui::px(66),ui::px(28),count);
-      toggle_hidden(rows_[8],true);
       const int gap=ui::px(8), margin=ui::px(8);
       const int cw=(w_-2*margin-gap)/2;
       const int ch=list_card_height_();
+      const int next=p_->next_alarm();
+      const int snooze_slot=(next>=0 && p_->snoozing(next))?next:-1;
       for(int n=0;n<6;++n) {
-        if(n>=listed_ && (n!=listed_ || listed_==AlarmClock::COUNT)) continue;
+        const bool cancel_tile=(n==5 && snooze_slot>=0);
+        const bool add_tile=(n==listed_ && listed_<AlarmClock::COUNT);
+        if(n>=listed_ && !add_tile && !cancel_tile) continue;
         const int x=margin+(n%2)*(cw+gap);
         const int y=list_top_()+(n/2)*(ch+gap);
         auto &card=list_cards_[n];
         show_visual_(card,true);
-        if(n==listed_) {
+        if(cancel_tile) {
+          paint_visual_(card,x,y,cw,ch,p_->text("cancel_snooze"),"","","",false,true,false,4);
+        } else if(add_tile) {
           paint_visual_(card,x,y,cw,ch,p_->text("grid_add"),"","","",true,true,false);
         } else {
           const int slot=visible_[n];
@@ -649,8 +725,7 @@ class AlarmOverview final : public tessera::Card {
         show_visual_(edit_cards_[n],true);
         paint_visual_(edit_cards_[n],x,y,cw,ch,captions[n],values[n],"","",true,false,true,n);
       }
-      chip_(rows_[6],ui::px(27),h_-ui::px(96),w_-ui::px(54),ui::px(40),p_->text("delete_alarm"));
-      toggle_hidden(rows_[6],true);
+      paint_trash_();
     } else if(screen_==TYPE) {
       const int top=detail_top_(),gap=ui::px(9),rh=type_card_height_();
       for(int i=0;i<3;++i) {
@@ -737,7 +812,7 @@ class AlarmOverview final : public tessera::Card {
         auto &c=edit_cards_[n];show_visual_(c,true);
         paint_visual_(c,x,y,cw,ch,titles[n],vals[n],"","",true,false,true,n==0?1:n==1?2:3);
       }
-      if(!new_) {chip_(rows_[6],ui::px(20),h_-ui::px(99),w_-ui::px(40),ui::px(39),p_->text("delete_alarm"));toggle_hidden(rows_[6],true);}
+      if(!new_) paint_trash_();
     } else if(screen_==CONFIRM_DELETE) {
       const int card_h=std::min(ui::px(150),h_-ui::px(130));
       const int card_y=(h_-card_h)/2-ui::px(10);
@@ -752,6 +827,7 @@ class AlarmOverview final : public tessera::Card {
   int selected_{-1}, w_{0}, h_{0}, listed_{0};
   int visible_[AlarmClock::COUNT]{};
   lv_obj_t *title_{},*subtitle_{},*rows_[9]{},*days_[7]{},*back_{},*next_{};
+  lv_obj_t *trash_bg_{},*trash_parts_[4]{};
   lv_obj_t *hour_{},*minute_{},*day_{},*month_{},*year_{};
   VisualCard list_cards_[6]{}, edit_cards_[4]{};
 };
@@ -872,13 +948,14 @@ void AlarmClock::update_alarm_overlay_() {
   lv_obj_set_pos(overlay_progress_bg_,progress_x,progress_y);
   lv_obj_set_size(overlay_progress_bg_,progress_width,15);
   lv_obj_set_pos(overlay_progress_fill_,progress_x,progress_y);
-  const int fill_width=std::max(1,static_cast<int>(static_cast<uint64_t>(progress_width)*
-      std::min<uint32_t>(elapsed_ms,VolumeRamp::DURATION_MS)/VolumeRamp::DURATION_MS));
+  const int fill_width=std::max(1,progress_width*
+      VolumeRamp::progress_percent(target_percent,elapsed_ms)/100);
   lv_obj_set_size(overlay_progress_fill_,fill_width,15);
   if (a_[active].audio_expired) {
     std::snprintf(value,sizeof(value),"%s",text("audio_ended"));
-  } else if (elapsed_ms < VolumeRamp::DURATION_MS) {
-    std::snprintf(value,sizeof(value),"%s: %d s",text("volume_target_in"),VolumeRamp::seconds_remaining(elapsed_ms));
+  } else if (VolumeRamp::seconds_to_next(target_percent,elapsed_ms)>0) {
+    std::snprintf(value,sizeof(value),"%s: %d s",text("volume_step_in"),
+        VolumeRamp::seconds_to_next(target_percent,elapsed_ms));
   } else {
     std::snprintf(value,sizeof(value),"%s",text("volume_max_reached"));
   }
@@ -1130,7 +1207,6 @@ void AlarmClock::reset_audio_start_() {
   last_song_ms_=0;
   last_audio_attempt_ms_=0;
   applied_volume_percent_=-1;
-  last_volume_update_ms_=0;
   volume_update_sent_=false;
   audio_start_retries_=0;
   audio_stream_was_running_=false;
@@ -1165,12 +1241,12 @@ void AlarmClock::play_current_(uint32_t now_ms) {
     last_song_ms_=now_ms;
     last_audio_attempt_ms_=now_ms;
   }
-  if (speaker_ && running && (!volume_update_sent_ ||
-      elapsed_since(now_ms,last_volume_update_ms_)>=VolumeRamp::UPDATE_INTERVAL_MS)) {
-    // Smooth one-second gain interpolation instead of ten audible 6s jumps.
+  if (speaker_ && running &&
+      (!volume_update_sent_ || applied_volume_percent_ != current_pct)) {
+    // Apply each +5 percentage point step exactly once as it becomes due.
+    // Do not continuously interpolate the I2S volume between 15s steps.
     speaker_->set_volume(gain);
     applied_volume_percent_=current_pct;
-    last_volume_update_ms_=now_ms;
     volume_update_sent_=true;
   }
   audio_stream_was_running_=running;
