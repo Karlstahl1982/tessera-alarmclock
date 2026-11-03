@@ -20,6 +20,14 @@ constexpr const char *SONGS[] = {
     "sunrise:d=8,o=5,b=85:c,d,e,g,4c6,p,g,e,c",
     "urgent:d=16,o=6,b=180:a,a,p,a,a,p,g,g,p,a,a"};
 int clamp_int(int value, int lo, int hi) { return std::max(lo, std::min(hi, value)); }
+// Monotonic elapsed time, defensively clamped against a timestamp that lies
+// a few milliseconds in the future. Ordinary uint32 subtraction would wrap
+// to ~49 days and prematurely end the very first scheduled alarm. Supports
+// a genuine millis() rollover for short (sub-24-day) intervals.
+uint32_t elapsed_since(uint32_t now_ms, uint32_t start_ms) {
+  const uint32_t delta = now_ms - start_ms;
+  return delta < 0x80000000u ? delta : 0u;
+}
 int days_in_month(int year, int month) {
   static constexpr int DAYS_IN_MONTH[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
   if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0)) return 29;
@@ -830,13 +838,13 @@ void AlarmClock::update_alarm_overlay_() {
   std::snprintf(value,sizeof(value),"%02d:%02d",hour(active),minute(active));
   place_label(overlay_clock_,8,overlay_height_*29/100,overlay_width_-16,overlay_height_*21/100,value);
   if (speaker_ && !audio_stream_has_started_ && !a_[active].audio_expired) {
-    const uint32_t start_wait=static_cast<uint32_t>(millis()-a_[active].started_ms);
+    const uint32_t start_wait=elapsed_since(millis(),a_[active].started_ms);
     std::snprintf(value,sizeof(value),"%s",text(start_wait>=12000u?"audio_failed":"audio_starting"));
   } else {
     std::snprintf(value,sizeof(value),"%s %d/3",text("snooze"),a_[active].snoozes_used);
   }
   place_label(overlay_state_,8,overlay_height_*47/100,overlay_width_-16,34,value);
-  const uint32_t elapsed_ms=static_cast<uint32_t>(millis()-a_[active].started_ms);
+  const uint32_t elapsed_ms=elapsed_since(millis(),a_[active].started_ms);
   const int target_percent=volume(active);
   const int actual_percent=VolumeRamp::current_percent(target_percent,elapsed_ms);
   std::snprintf(value,sizeof(value),"%s: %d%%  /  %d%%",text("volume"),actual_percent,target_percent);
@@ -1026,12 +1034,12 @@ int AlarmClock::next_alarm() const {
   }
   return best;
 }
-void AlarmClock::start_alarm_(int i,bool test) {
+void AlarmClock::start_alarm_(int i,bool test,uint32_t start_ms) {
   Slot &s=a_[i];
   if (s.active) return;
   // Check BEFORE setting active: this was previously always true for the first alarm.
   const bool already_ringing=any_ringing();
-  const uint32_t now_ms=millis();
+  const uint32_t now_ms=start_ms;
   s.active=true; s.test=test; s.started_ms=now_ms; s.snooze_pending=false; s.audio_expired=false;
   if (!already_ringing || audio_owner_<0 || !a_[audio_owner_].active) {
     audio_owner_=i;
@@ -1044,7 +1052,7 @@ void AlarmClock::start_alarm_(int i,bool test) {
   update_alarm_overlay_();
   tessera::refresh();
 }
-void AlarmClock::start_test() { a_[0].snoozes_used=0; start_alarm_(0,true); }
+void AlarmClock::start_test() { a_[0].snoozes_used=0; start_alarm_(0,true,millis()); }
 void AlarmClock::stop_alarm(int i) {
   if (i<0 || i>=COUNT) return;
   Slot &s=a_[i]; s.active=false; s.snooze_pending=false; s.test=false; s.snoozes_used=0;
@@ -1086,7 +1094,7 @@ void AlarmClock::play_current_(uint32_t now_ms) {
   if(!player_ || audio_owner_<0) return;
   const Slot &s=a_[audio_owner_];
   if (s.audio_expired) return;
-  const uint32_t elapsed_ms=static_cast<uint32_t>(now_ms-s.started_ms);
+  const uint32_t elapsed_ms=elapsed_since(now_ms,s.started_ms);
   const int current_pct=VolumeRamp::current_percent(volume(audio_owner_),elapsed_ms);
   const float gain=VolumeRamp::digital_gain(volume(audio_owner_),elapsed_ms);
   // RTTTL::set_gain() is not live while an I2S song plays: the speaker's volume
@@ -1095,7 +1103,7 @@ void AlarmClock::play_current_(uint32_t now_ms) {
   player_->set_gain(gain);
   const bool running=speaker_ && speaker_->is_running();
   if (!player_->is_playing() &&
-      (last_song_ms_==0 || static_cast<uint32_t>(now_ms-last_song_ms_)>=500u)) {
+      (last_song_ms_==0 || elapsed_since(now_ms,last_song_ms_)>=500u)) {
     player_->play(SONGS[tune(audio_owner_)]);
     last_song_ms_=now_ms;
     last_audio_attempt_ms_=now_ms;
@@ -1109,7 +1117,7 @@ void AlarmClock::play_current_(uint32_t now_ms) {
   // A cold speaker can remain in STARTING/INIT without producing output.
   // Retry only if the speaker never became RUNNING; avoid interrupting songs.
   if (speaker_ && !running && player_->is_playing() && audio_start_retries_<2 &&
-      static_cast<uint32_t>(now_ms-last_audio_attempt_ms_)>=4000u) {
+      elapsed_since(now_ms,last_audio_attempt_ms_)>=4000u) {
     ++audio_start_retries_;
     player_->stop();
     player_->set_gain(gain);
@@ -1127,7 +1135,12 @@ bool AlarmClock::matches_(int i,uint32_t candidate_epoch,uint32_t &key) const {
   if(mode(i)==2) return weekday_enabled(i,(t.weekday+6)%7);
   return true;
 }
-void AlarmClock::on_interval(uint32_t now_ms) {
+void AlarmClock::on_interval(uint32_t /* tick_ms */) {
+  // Tessera obtains its tick timestamp before invoking this callback.
+  // Capture millis() once and use that same instant for BOTH starting a new
+  // alarm and evaluating timeouts; otherwise a 1 ms skew can wrap unsigned
+  // subtraction and mark a fresh alarm as "audio expired" immediately.
+  const uint32_t now_ms=millis();
   // Preserve enabled slots and migrate configured-but-disabled slots from 0.1.0 once.
   if(migration_pending_ && now_ms >= 12000u) {
     for(int i=0;i<COUNT;++i) {
@@ -1156,7 +1169,7 @@ void AlarmClock::on_interval(uint32_t now_ms) {
             a_[i].preference.save(&key);
             if(mode(i)!=2) set_active(i,false);
             a_[i].snoozes_used=0;
-            start_alarm_(i,false);
+            start_alarm_(i,false,now_ms);
             break;
           }
         }
@@ -1165,11 +1178,11 @@ void AlarmClock::on_interval(uint32_t now_ms) {
   }
   for(int i=0;i<COUNT;++i) {
     Slot &s=a_[i];
-    if(s.snooze_pending && static_cast<int32_t>(now_ms-s.snooze_due_ms)>=0) start_alarm_(i,false);
+    if(s.snooze_pending && static_cast<int32_t>(now_ms-s.snooze_due_ms)>=0) start_alarm_(i,false,now_ms);
     // Audio ends after 5 minutes (15 seconds for a test), but the alarm stays
     // pending until a conscious Stop or Snooze action acknowledges it.
     if(s.active && !s.audio_expired &&
-       static_cast<uint32_t>(now_ms-s.started_ms)>=(s.test?75000u:300000u)) {
+       elapsed_since(now_ms,s.started_ms)>=(s.test?75000u:300000u)) {
       s.audio_expired=true;
       refresh_audio_owner_(now_ms);
     }

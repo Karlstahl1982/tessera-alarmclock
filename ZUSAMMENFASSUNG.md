@@ -1,39 +1,37 @@
 # Projektzusammenfassung – Tessera AlarmClock
 
-**Version:** 0.3.2 (Beta)  
-**Ziel:** Zuverlässig hörbarer Alarm bereits beim ersten Auslösen; nachvollziehbarer, über 60 Sekunden steigender Pegel mit aktueller %-Anzeige und Countdown bis zur nächsten Stufe. Bestehende Bedienung und Funktionalität erhalten.
+**Version:** 0.3.3 (Beta)  
+**Ziel:** Verhindern, dass der **erste planmäßige Alarm sofort als „Alarmton beendet“** erscheint. Die lokale Audioausgabe, Lautstärkestufen, Touchbedienung und das Schlummern bleiben erhalten.
 
 ## Arbeitsschritte / Status
 
-- [x] Ausgangsbasis v0.3.1 vollständig übernommen.
-- [x] Audio-Code überprüft: anfänglicher Gain und I²S-Verhalten untersucht.
-- [x] Alarmstart vor LVGL-Vollbildaufbau; separate Initialisierung des Audioplayers.
-- [x] Startüberwachung und maximal zwei begrenzte Retries hinzugefügt.
-- [x] Lautstärke in zehn Stufen à sechs Sekunden mit Live-Aktualisierung des I²S-Ausgangs.
-- [x] Alarmanzeige erweitert: aktueller %-Wert, Zielwert, Balken, Countdown, Audio-Startstatus.
-- [x] Testalarm auf 75 Sekunden verlängert, damit der gesamte Rampenverlauf überprüfbar ist.
-- [x] YAML/Manifest/Übersetzungen und Installationsdokumentation aktualisiert.
-- [x] Tests: 21 Python-Unittests mit C++-Mockkompilierung, auszuführenden C++-Audiotests und JS-Regression bestanden.
-- [ ] ESPHome-2026.9.0-Firmware **real** kompilieren.
-- [ ] 4-Zoll-Display: optische Darstellung der Countdown-Labels prüfen.
-- [ ] Akustischer Test: erster Ton unmittelbar beim ersten Start, Stufen nach 6/12/…/60 s tatsächlich hörbar.
-- [ ] Reale Wecker-Auslösung mit Snooze, Auto-Ende und WLAN-/HA-Ausfall erneut prüfen.
+- [x] Vollständiges Paket v0.3.2 als Basis übernommen; alle Komponenten vorhanden.
+- [x] Ursache identifiziert: Beim ersten planmäßigen Alarm vermischte der Tick einen älteren Scheduler-Zeitwert mit einem neueren `millis()`-Wert. Die Subtraktion ohne Vorzeichen lief bereits bei 1 ms Differenz über und markierte den Audio-Timeout als abgelaufen.
+- [x] Ein reproduzierbarer Laufzeittest schlägt auf v0.3.2 fehl und besteht nach der Korrektur.
+- [x] Startzeit und Timeoutprüfung innerhalb des gesamten Intervalls auf denselben monotonen Zeitstempel umgestellt.
+- [x] Zeitdifferenzen gegen leicht negative Abweichungen abgesichert; auch einen echten Zählerüberlauf geprüft.
+- [x] Bestehende GUI, fünf Wecker, 60-Sekunden-Lautstärkerampe, 75-Sekunden-Testalarm und bis zu drei Schlummer-Wiederholungen unverändert gelassen.
+- [x] Native C++-Mocktests, JS-Prüfungen, Paket-/YAML- und Layouttests bestanden.
+- [ ] Firmware mit Tessera/ESPHome 2026.9.0 auf dem Zielsystem kompilieren.
+- [ ] OTA-Update auf Guition „Hilde“ durchführen.
+- [ ] **Ersten planmäßigen Alarm direkt nach einem Geräteneustart** sowie einen Alarm nach Schlummern akustisch testen.
+- [ ] Im echten Betrieb Ton, 6-Sekunden-Countdown und Lautstärkestufen bis 60 Sekunden prüfen.
 
-## Probleme / Workarounds
+## Probleme und Umgehungen
 
-1. **Erster Alarm sehr leise oder stumm:** Der frühere digitale Ausgangspegel bei 60 % Zielwert lag anfangs bei nur 0,9 %. Jetzt höherer Startpegel und begrenzte Kaltstartwiederholung; keine definitive Hardware-Diagnose ohne Live-Test.
-2. **Veränderter RTTTL-Gain während Playback:** Beim I²S-Pfad übernimmt RTTTL den Gain beim INIT. Eine alleinige `set_gain()`-Aktualisierung bewirkt keine zuverlässige Änderung während einer Melodie. Umgangen durch die zusätzliche, gezielte `speaker_->set_volume(...)`-Nachregelung beim Stufenwechsel.
-3. **Testdauer bisher 15 Sekunden:** Zu kurz für 60-sekündigen Verlauf. Test auf 75 Sekunden erweitert; manueller Stopp jederzeit möglich.
-4. **Schallpegel nicht messbar:** Prozentangaben sind relative Software-Sollwerte, kein gemessener Schalldruck. Software-Gain auf 0,35 begrenzt, keine automatische Kalibrierung.
-5. **Kompilierbarkeit:** C++-Syntax mit Mock-Schnittstellen und Tests bestanden, echter ESPHome-/ESP-IDF-Build lokal nicht möglich. Vor OTA auf Zielsystem kompilieren.
+1. **Erster Alarm sofort beendet:** `on_interval()` erhielt den vom Framework zuvor erfassten Tick und rief `start_alarm_()` auf, das `millis()` etwas später las. `uint32_t(now - start)` wurde bei negativem Millisekunden-Unterschied zu einem Wert von fast 49 Tagen. **Fix:** ein konsistenter Start-Zeitstempel pro Tick; negative Abweichungen werden defensiv auf null geklemmt.
+2. **RTTTL/I²S-Kaltstart und Lautstärkeänderung (aus 0.3.2):** Die bestehenden begrenzten Audio-Neustarts und die direkte Lautstärkestufenregelung am I²S-Speaker bleiben erhalten; diese Mechanismen werden nicht als Lösung des Timeoutfehlers missbraucht.
+3. **Hardwaretest noch offen:** Die Testumgebung bildet Tessera und ESPHome nach. Der C++-Mocktest bestätigt die Alarmzustandslogik, kann die reale Lautsprecherausgabe aber nicht messen.
+4. **Keine RTC:** Nach völligem Stromausfall ist eine erneute gültige Zeitsynchronisierung erforderlich.
 
-## Installationsanleitung
+## Installation
 
-1. ZIP entpacken; Gesamtinhalt direkt in `https://github.com/Karlstahl1982/tessera-alarmclock` (`main`) hochladen/ersetzen.
-2. Tessera → Plugins → Branch testen → `main`; Version **0.3.2** und GitHub-Commit prüfen.
-3. Bestehende lokale Audio-YAML (`guition_tone`, `guition_speaker`) beibehalten.
-4. ESPHome-Firmware **nur kompilieren**; erst bei Erfolg OTA übertragen.
-5. Testalarm mit 40–60 % Sollpegel starten; Anzeige und Hörbarkeit ab Sekunde 0 und Stufen bis 60 s kontrollieren.
-6. Test über „Stoppen“ beenden; anschließend reale Weckzeit überprüfen. Bis dahin anderen Wecker bereithalten.
+1. ZIP vollständig entpacken. Alle Dateien/Unterordner direkt nach `https://github.com/Karlstahl1982/tessera-alarmclock` auf Branch `main` hochladen und bestehende Dateien ersetzen.
+2. In Tessera **„Plugins → Mit einem Link hinzufügen → Branch testen“** den Repository-Link und `main` wählen. **Version 0.3.3 und neuen Commit prüfen.**
+3. Vorhandene Audio-YAML und Home-Assistant-Karte unverändert lassen.
+4. Zunächst **ESPHome-Firmware nur kompilieren**. Bei Erfolg Firmware auf „Hilde“ übertragen.
+5. Display neu starten und einen einmaligen Wecker für die nächsten 2–3 Minuten einstellen. Beim ersten Klingeln muss Ton kommen; „Alarmton beendet“ darf nicht sofort erscheinen.
+6. Testweise auf **Schlummern** gehen und die erneute Auslösung prüfen. Außerdem Tonstufen (alle 6 s) und Stoppen testen.
+7. Solange die erste reguläre Weckzeit nicht in der Praxis geprüft wurde, einen unabhängigen Zweitwecker verwenden.
 
-**Rollback:** Vorheriger bewährter Stand v0.3.1 aus Version/Commit wiederherstellen, sollte der Build oder Ton fehlschlagen.
+**Rollback:** Über den vorherigen GitHub-Commit / Plugin-Stand v0.3.2 wiederherstellen, falls der Build scheitert. Hinweis: Dieser Stand enthält den hier behobenen Erstalarm-Fehler.

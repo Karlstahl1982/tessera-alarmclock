@@ -99,7 +99,7 @@ class AlarmClock final : public Component, public tessera::Plugin {
     bool test{false};
     bool audio_expired{false};
   } a_[COUNT];
-  void start_alarm_(int i, bool test);
+  void start_alarm_(int i, bool test, uint32_t started_ms);
   void update_alarm_overlay_();
   static void on_overlay_stop_(lv_event_t *event);
   static void on_overlay_snooze_(lv_event_t *event);

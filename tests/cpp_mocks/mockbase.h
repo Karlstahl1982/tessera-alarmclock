@@ -46,7 +46,8 @@ inline void lv_roller_set_visible_row_count(lv_obj_t*,int){}
 inline void lv_roller_set_selected(lv_obj_t*,int,int){}
 inline int lv_roller_get_selected(lv_obj_t*){return 0;}
 inline uint32_t mock_time_ms=42;
-inline uint32_t millis(){return mock_time_ms;}
+inline uint32_t mock_millis_auto_advance=0;
+inline uint32_t millis(){const auto current=mock_time_ms; mock_time_ms+=mock_millis_auto_advance; return current;}
 namespace theme { enum R {CARD,INK,ACCENT,ON_ACCENT,MUTED}; }
 namespace esphome {
 namespace setup_priority { static constexpr float DATA=10; }

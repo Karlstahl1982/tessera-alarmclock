@@ -15,7 +15,7 @@ class PackageTest(unittest.TestCase):
 
     def test_manifest(self):
         self.assertEqual(self.manifest['id'],'alarmclock')
-        self.assertEqual(self.manifest['version'],'0.3.2')
+        self.assertEqual(self.manifest['version'],'0.3.3')
         self.assertRegex(self.manifest['version'],r'^\d+\.\d+\.\d+$')
         self.assertEqual(self.manifest['tiles'][0]['sizes']['max'],'2x3')
         self.assertIn('overview', [card['id'] for card in self.manifest['cards']])
@@ -79,6 +79,13 @@ class PackageTest(unittest.TestCase):
         self.assertNotIn('0.10f+0.90f',c)
         self.assertNotIn('0.15f * volume(audio_owner_)',c)
 
+    def test_scheduled_alarm_timestamp_regression(self):
+        c=self.cpp
+        self.assertIn('const uint32_t now_ms=millis();', c)
+        self.assertIn('start_alarm_(i,false,now_ms);', c)
+        self.assertIn('elapsed_since(now_ms,s.started_ms)', c)
+        self.assertNotIn('static_cast<uint32_t>(now_ms-s.started_ms)', c)
+
     def test_audio_ramp_runtime(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
         source=ROOT/'tests/test_audio_ramp.cpp'
@@ -92,7 +99,7 @@ class PackageTest(unittest.TestCase):
 
     def test_audio_mock_runtime(self):
         if not shutil.which('g++'): self.skipTest('g++ missing')
-        for name in ('test_audio_runtime','test_cold_start'):
+        for name in ('test_audio_runtime','test_cold_start','test_first_scheduled_alarm','test_millis_rollover'):
             source=ROOT/f'tests/{name}.cpp'
             executable=ROOT/f'tests/_{name}'
             try:
